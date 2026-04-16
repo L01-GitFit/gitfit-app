@@ -46,6 +46,12 @@
         "projectId": "c5aec6cf-af41-44b3-8b4a-0bf54730f49e"
       }
     },
-    "owner": "gitfit"
+    "owner": "gitfit",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c5aec6cf-af41-44b3-8b4a-0bf54730f49e"
+    }
   }
 }
