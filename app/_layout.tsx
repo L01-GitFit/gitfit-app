@@ -20,7 +20,7 @@ SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
+  initialRouteName: 'onboarding',
 };
 
 export default function RootLayout() {
@@ -49,6 +49,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <Stack>
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding2" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding3" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
