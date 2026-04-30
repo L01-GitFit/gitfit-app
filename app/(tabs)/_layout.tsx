@@ -20,6 +20,7 @@ export default function TabLayout() {
         name="two"
         options={{
           title: 'Workout',
+          headerShown: false,
         }}
       />
       <Tabs.Screen

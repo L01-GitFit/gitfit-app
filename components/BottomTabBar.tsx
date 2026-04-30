@@ -1,6 +1,7 @@
 import { MaterialIcons } from '@react-native-vector-icons/material-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
+const activeBg = require('../assets/active_bg.png');
 
 type TabName = 'home' | 'workout' | 'profile';
 
@@ -9,6 +10,9 @@ const TABS: { name: TabName; routeName: string; label: string; icon: string }[] 
   { name: 'workout', routeName: 'two', label: 'WORKOUT', icon: 'fitness-center' },
   { name: 'profile', routeName: 'profile', label: 'PROFILE', icon: 'person' },
 ];
+
+// Figma active tab background image
+const imgActiveBg = activeBg;
 
 export default function BottomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   return (
@@ -37,7 +41,13 @@ export default function BottomTabBar({ state, descriptors, navigation }: BottomT
             accessibilityRole="button"
             accessibilityState={isFocused ? { selected: true } : {}}
             accessibilityLabel={descriptors[state.routes[index]?.key]?.options?.tabBarAccessibilityLabel}>
-            {isFocused && <View style={styles.activePill} />}
+            {isFocused && (
+              <Image
+                source={imgActiveBg}
+                style={styles.activePill}
+                resizeMode="cover"
+              />
+            )}
             <MaterialIcons
               name={tab.icon as any}
               size={24}
@@ -68,7 +78,7 @@ const styles = StyleSheet.create({
     shadowColor: '#ee9033',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.04,
-    shadowRadius: 24,
+    shadowRadius: 12,
     elevation: 8,
   },
   tabItem: {
@@ -86,11 +96,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     inset: 0,
     borderRadius: 8,
-    backgroundColor: 'rgba(238,144,51,0.18)',
     top: 0,
     bottom: 0,
     left: 0,
     right: 0,
+    width: '100%',
+    height: '100%',
   },
   label: {
     fontWeight: 'bold',
