@@ -6,7 +6,7 @@ type TabName = 'home' | 'workout' | 'profile';
 
 const TABS: { name: TabName; routeName: string; label: string; icon: string }[] = [
   { name: 'home', routeName: 'index', label: 'HOME', icon: 'home' },
-  { name: 'workout', routeName: 'two', label: 'WORKOUT', icon: 'fitness-center' },
+  { name: 'workout', routeName: 'workout', label: 'WORKOUT', icon: 'fitness-center' },
   { name: 'profile', routeName: 'profile', label: 'PROFILE', icon: 'person' },
 ];
 

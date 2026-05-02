@@ -6,7 +6,8 @@
     "scheme": "gitfit-expo-app",
     "platforms": [
       "ios",
-      "android"
+      "android",
+      "web"
     ],
     "web": {
       "bundler": "metro",
@@ -15,7 +16,9 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "expo-secure-store",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -33,13 +36,18 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.diduide.gitfitexpoapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.diduide.gitfitexpoapp"
     },
     "extra": {
       "router": {},
