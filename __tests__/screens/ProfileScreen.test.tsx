@@ -1,4 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 
 import ProfileScreen from '@/app/(tabs)/profile';
 
@@ -8,6 +9,21 @@ jest.mock('react-native-safe-area-context', () => {
   return {
     SafeAreaView: ({ children, ...props }: any) => <View {...props}>{children}</View>,
   };
+});
+
+const mockReplace = jest.fn();
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ replace: mockReplace }),
+}));
+
+const mockClearAuth = jest.fn();
+jest.mock('@/store/authStore', () => ({
+  useAuthStore: (selector: any) => selector({ clearAuth: mockClearAuth }),
+}));
+
+beforeEach(() => {
+  mockReplace.mockClear();
+  mockClearAuth.mockClear();
 });
 
 describe('Profile screen', () => {
@@ -48,5 +64,43 @@ describe('Profile screen', () => {
   it('re-renders without crashing', () => {
     const { rerender } = render(<ProfileScreen />);
     expect(() => rerender(<ProfileScreen />)).not.toThrow();
+  });
+
+  // ── Logout button ─────────────────────────────────────────────────────────
+  it('renders the "Log out" button', () => {
+    const { getByText } = render(<ProfileScreen />);
+    expect(getByText('Log out')).toBeTruthy();
+  });
+
+  it('pressing "Log out" shows a confirmation Alert', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    const { getByText } = render(<ProfileScreen />);
+    fireEvent.press(getByText('Log out'));
+    expect(alertSpy).toHaveBeenCalledWith('Log out', expect.any(String), expect.any(Array));
+    alertSpy.mockRestore();
+  });
+
+  it('confirming logout calls clearAuth and navigates to onboarding', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_title, _msg, buttons) => {
+      const confirm = (buttons as any[]).find((b) => b.style === 'destructive');
+      confirm?.onPress();
+    });
+    const { getByText } = render(<ProfileScreen />);
+    fireEvent.press(getByText('Log out'));
+    expect(mockClearAuth).toHaveBeenCalledTimes(1);
+    expect(mockReplace).toHaveBeenCalledWith('/(auth)/onboarding');
+    alertSpy.mockRestore();
+  });
+
+  it('cancelling logout does NOT call clearAuth', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_title, _msg, buttons) => {
+      const cancel = (buttons as any[]).find((b) => b.style === 'cancel');
+      cancel?.onPress?.();
+    });
+    const { getByText } = render(<ProfileScreen />);
+    fireEvent.press(getByText('Log out'));
+    expect(mockClearAuth).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
   });
 });

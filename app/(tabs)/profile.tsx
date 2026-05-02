@@ -1,9 +1,28 @@
-import { Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { useAuthStore } from '@/store/authStore';
 
 const defaultAvatar = require('../../assets/default-avatar.png');
 
 export default function ProfileScreen() {
+  const clearAuth = useAuthStore((s) => s.clearAuth);
+  const router = useRouter();
+
+  const handleLogout = () => {
+    Alert.alert('Log out', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log out',
+        style: 'destructive',
+        onPress: () => {
+          clearAuth();
+          router.replace('/(auth)/onboarding');
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-black">
       <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
@@ -53,6 +72,16 @@ export default function ProfileScreen() {
               <Text className="text-[#ee9033] text-xs">Jan 01, 2004</Text>
             </View>
           </View>
+        </View>
+
+        {/* Logout */}
+        <View className="px-4 mt-8 mb-4">
+          <TouchableOpacity
+            onPress={handleLogout}
+            className="items-center justify-center h-11 rounded-lg border border-red-500"
+          >
+            <Text className="text-red-500 text-sm font-semibold">Log out</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
