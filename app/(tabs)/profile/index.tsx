@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
 
-const defaultAvatar = require('../../assets/default-avatar.png');
+const defaultAvatar = require('@/assets/default-avatar.png');
 
 export default function ProfileScreen() {
   const clearAuth = useAuthStore((s) => s.clearAuth);

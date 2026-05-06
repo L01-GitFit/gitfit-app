@@ -61,7 +61,7 @@ export default function RootLayout() {
 
     if (accessToken && inAuthGroup) {
       // Authenticated user landed on an auth screen → push to main app
-      router.replace('/(tabs)');
+      router.replace('/(tabs)/home');
     } else if (!accessToken && inTabsGroup) {
       // Unauthenticated user tried to access the app → push to onboarding
       router.replace('/(auth)/onboarding');
@@ -83,6 +83,10 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           {/* Global modal accessible from any screen */}
           <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+          {/* Workout log / session screen — full-screen modal */}
+          <Stack.Screen name="workout-log" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+          {/* Add exercise picker — full-screen modal */}
+          <Stack.Screen name="add-exercise" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
         </Stack>
       </SafeAreaProvider>
     </QueryClientProvider>

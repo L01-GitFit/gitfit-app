@@ -1,18 +1,72 @@
+import { useEffect, useState } from 'react';
 import { MaterialIcons } from '@react-native-vector-icons/material-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import FloatingWorkoutBanner from '@/components/workout/FloatingWorkoutBanner';
+import DiscardWorkoutDialog from '@/components/workout/DiscardWorkoutDialog';
+import { useWorkoutSessionStore } from '@/store/workoutSession.store';
 
 type TabName = 'home' | 'workout' | 'profile';
 
-const TABS: { name: TabName; routeName: string; label: string; icon: string }[] = [
-  { name: 'home', routeName: 'index', label: 'HOME', icon: 'home' },
-  { name: 'workout', routeName: 'workout', label: 'WORKOUT', icon: 'fitness-center' },
-  { name: 'profile', routeName: 'profile', label: 'PROFILE', icon: 'person' },
+function formatDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}h ${m}m ${s}s`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+const TABS: { name: TabName; label: string; icon: string }[] = [
+  { name: 'home', label: 'HOME', icon: 'home' },
+  { name: 'workout', label: 'WORKOUT', icon: 'fitness-center' },
+  { name: 'profile', label: 'PROFILE', icon: 'person' },
 ];
 
 export default function BottomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const router = useRouter();
+  const sessionId = useWorkoutSessionStore((s) => s.sessionId);
+  const isMinimized = useWorkoutSessionStore((s) => s.isMinimized);
+  const startedAt = useWorkoutSessionStore((s) => s.startedAt);
+  const exercises = useWorkoutSessionStore((s) => s.exercises);
+  const restore = useWorkoutSessionStore((s) => s.restore);
+  const resetSession = useWorkoutSessionStore((s) => s.resetSession);
+
+  const [elapsed, setElapsed] = useState(0);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+
+  useEffect(() => {
+    if (!startedAt || !sessionId) return;
+    const initial = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+    setElapsed(initial);
+    const timer = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(timer);
+  }, [startedAt, sessionId]);
+
+  const lastExercise = exercises[exercises.length - 1];
+  const exerciseName = lastExercise?.externalExercise.name ?? 'Workout in progress';
+
+  function handleBannerExpand() {
+    restore();
+    router.push('/workout-log');
+  }
+
+  function confirmDiscard() {
+    setShowDiscardDialog(false);
+    resetSession();
+  }
+
   return (
-    <View style={styles.container}>
+    <View style={{ backgroundColor: '#000' }}>
+      {sessionId && isMinimized && (
+        <FloatingWorkoutBanner
+          workout={{ duration: formatDuration(elapsed), exercise: exerciseName }}
+          onExpand={handleBannerExpand}
+          onDiscard={() => setShowDiscardDialog(true)}
+        />
+      )}
+      <View style={styles.container}>
       {TABS.map((tab, index) => {
         const isFocused = state.index === index;
 
@@ -24,7 +78,7 @@ export default function BottomTabBar({ state, descriptors, navigation }: BottomT
           });
 
           if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(tab.routeName);
+            navigation.navigate(state.routes[index].name);
           }
         };
 
@@ -49,6 +103,13 @@ export default function BottomTabBar({ state, descriptors, navigation }: BottomT
           </TouchableOpacity>
         );
       })}
+      </View>
+
+      <DiscardWorkoutDialog
+        visible={showDiscardDialog}
+        onConfirm={confirmDiscard}
+        onCancel={() => setShowDiscardDialog(false)}
+      />
     </View>
   );
 }

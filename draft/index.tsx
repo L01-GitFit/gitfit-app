@@ -225,7 +225,7 @@ function buildFinishedWorkoutState(exercises: LoggedExercise[]): FinishedWorkout
   };
 }
 
-export default function WorkoutScreen() {
+export default function WorkoutLogScreen() {
   const [mode, setMode] = useState<ScreenMode>('logWorkout');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<FilterKey>('All');

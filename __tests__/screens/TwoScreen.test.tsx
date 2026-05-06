@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react-native';
 
-import TwoScreen from '@/app/(tabs)/two';
+import TwoScreen from '@/app/(tabs)/workoutLog';
 
 jest.mock('expo-router', () => ({
   Stack: {

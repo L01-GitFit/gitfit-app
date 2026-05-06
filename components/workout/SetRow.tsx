@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRef } from 'react';
+import { Animated, PanResponder, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { MaterialIcons } from '@react-native-vector-icons/material-icons';
 
 export type SetRowVariant = 'default' | 'completed' | 'achievement';
@@ -13,6 +14,9 @@ type SetRowProps = {
   variant?: SetRowVariant;
   achievementLabel?: string;
   onToggle?: () => void;
+  onKgChange?: (value: string) => void;
+  onRepsChange?: (value: string) => void;
+  onDelete?: () => void;
 };
 
 const VARIANT_STYLES = {
@@ -49,21 +53,103 @@ export function SetRow({
   variant = 'default',
   achievementLabel,
   onToggle,
+  onKgChange,
+  onRepsChange,
+  onDelete,
 }: SetRowProps) {
   const palette = VARIANT_STYLES[variant];
+  const translateX = useRef(new Animated.Value(0)).current;
+  const rowWidthRef = useRef(0);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, g) =>
+        g.dx < -8 && Math.abs(g.dx) > Math.abs(g.dy),
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
+      onPanResponderGrant: () => {
+        translateX.stopAnimation();
+      },
+      onPanResponderMove: (_, g) => {
+        if (g.dx < 0) translateX.setValue(Math.max(g.dx, -110));
+      },
+      onPanResponderRelease: (_, g) => {
+        const threshold = rowWidthRef.current > 0 ? -(rowWidthRef.current / 2) : -80;
+        if (g.dx <= threshold) {
+          Animated.timing(translateX, {
+            toValue: -500,
+            duration: 180,
+            useNativeDriver: true,
+          }).start(() => {
+            // Reset local animated state in case this component instance is reused by React.
+            translateX.setValue(0);
+            onDelete?.();
+          });
+        } else {
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(translateX, {
+          toValue: 0,
+          useNativeDriver: true,
+        }).start();
+      },
+    })
+  ).current;
+
+  const deleteOpacity = translateX.interpolate({
+    inputRange: [-110, -20, 0],
+    outputRange: [1, 0.4, 0],
+    extrapolate: 'clamp',
+  });
 
   return (
-    <View
-      style={[
-        styles.row,
-        { backgroundColor: palette.backgroundColor, borderColor: palette.borderColor },
-      ]}>
+    <View style={{ overflow: 'hidden' }}>
+      {/* Delete background */}
+      <Animated.View style={[styles.deleteBackground, { opacity: deleteOpacity }]}>
+        <MaterialIcons name="delete" size={22} color="#fff" />
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.row,
+          { backgroundColor: palette.backgroundColor, borderColor: palette.borderColor, transform: [{ translateX }] },
+        ]}
+        onLayout={(e) => {
+          rowWidthRef.current = e.nativeEvent.layout.width;
+        }}
+        {...panResponder.panHandlers}>
       <Text style={[styles.setText, { color: palette.textColor }]}>{setNumber}</Text>
       <Text style={[styles.previousText, { color: palette.mutedColor }]} numberOfLines={1}>
         {previous}
       </Text>
-      <Text style={[styles.metricText, { color: palette.textColor }]}>{kg}</Text>
-      <Text style={[styles.metricText, { color: palette.textColor }]}>{reps}</Text>
+      {onKgChange ? (
+        <TextInput
+          style={[styles.metricText, { color: palette.textColor, padding: 0 }]}
+          value={kg}
+          onChangeText={onKgChange}
+          keyboardType="numeric"
+          selectTextOnFocus
+        />
+      ) : (
+        <Text style={[styles.metricText, { color: palette.textColor }]}>{kg}</Text>
+      )}
+      {onRepsChange ? (
+        <TextInput
+          style={[styles.metricText, { color: palette.textColor, padding: 0 }]}
+          value={reps}
+          onChangeText={onRepsChange}
+          keyboardType="numeric"
+          selectTextOnFocus
+        />
+      ) : (
+        <Text style={[styles.metricText, { color: palette.textColor }]}>{reps}</Text>
+      )}
       <View style={styles.rpeWrap}>
         <Text style={[styles.rpePill, { color: palette.mutedColor }]}>{rpe}</Text>
         {achievementLabel ? <Text style={styles.achievementText}>{achievementLabel}</Text> : null}
@@ -80,55 +166,64 @@ export function SetRow({
         ]}>
         <MaterialIcons
           name="check"
-          size={10}
+          size={14}
           color={checked ? '#111111' : palette.mutedColor}
         />
       </Pressable>
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  deleteBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#ff6868',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingRight: 16,
+  },
   row: {
-    minHeight: 20,
+    minHeight: 36,
     borderWidth: 1,
-    borderRadius: 3,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+    borderRadius: 0,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     flexDirection: 'row',
     alignItems: 'center',
   },
   setText: {
-    width: 16,
+    width: 24,
     fontFamily: 'Lexend_500Medium',
-    fontSize: 9,
+    fontSize: 13,
   },
   previousText: {
     flex: 1.35,
     fontFamily: 'Lexend_400Regular',
-    fontSize: 8,
+    fontSize: 12,
     paddingRight: 4,
   },
   metricText: {
-    width: 30,
+    width: 36,
     textAlign: 'center',
     fontFamily: 'Lexend_500Medium',
-    fontSize: 8,
+    fontSize: 13,
   },
   rpeWrap: {
-    width: 34,
+    width: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
   rpePill: {
-    minWidth: 28,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 8,
+    minWidth: 36,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
     backgroundColor: 'rgba(255,255,255,0.18)',
     textAlign: 'center',
     fontFamily: 'Lexend_500Medium',
-    fontSize: 7,
+    fontSize: 11,
     overflow: 'hidden',
   },
   achievementText: {
@@ -139,10 +234,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   checkButton: {
-    width: 14,
-    height: 14,
-    marginLeft: 6,
-    borderRadius: 3,
+    width: 22,
+    height: 22,
+    marginLeft: 0,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: '#D9D9D9',
     alignItems: 'center',
