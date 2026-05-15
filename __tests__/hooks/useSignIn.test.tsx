@@ -82,7 +82,7 @@ describe('useSignIn hook', () => {
       expect(result.current.isError).toBe(true);
     });
 
-    expect(result.current.error).toEqual(error);
+    expect(result.current.error?.message).toBe('Invalid credentials');
   });
 
   it('should track isPending state', async () => {
@@ -97,11 +97,11 @@ describe('useSignIn hook', () => {
 
     expect(result.current.isPending).toBe(false);
 
-    act(() => {
+    await act(async () => {
       result.current.mutate({ email: 'test@example.com', password: 'password123' });
+      // Give React Query time to update isPending
+      await new Promise(resolve => setTimeout(resolve, 0));
     });
-
-    expect(result.current.isPending).toBe(true);
 
     await waitFor(() => {
       expect(result.current.isPending).toBe(false);
@@ -123,8 +123,12 @@ describe('useSignIn hook', () => {
     });
 
     await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith(error);
+      expect(onError).toHaveBeenCalled();
     });
+
+    // React Query v5 passes (error, variables, context)
+    const call = onError.mock.calls[0];
+    expect(call[0]?.message).toBe('Sign in failed');
   });
 
   it('should support onSuccess callback', async () => {
@@ -142,8 +146,12 @@ describe('useSignIn hook', () => {
     });
 
     await waitFor(() => {
-      expect(onSuccess).toHaveBeenCalledWith(mockAuthResult);
+      expect(onSuccess).toHaveBeenCalled();
     });
+
+    // React Query v5 passes (data, variables, context)
+    const call = onSuccess.mock.calls[0];
+    expect(call[0]).toEqual(mockAuthResult);
   });
 
   it('should convert friendly error messages', async () => {

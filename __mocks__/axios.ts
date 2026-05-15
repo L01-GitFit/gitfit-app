@@ -24,7 +24,30 @@ export const mockAxiosInstance = {
 
 const create = jest.fn(() => mockAxiosInstance);
 
+// Provide a minimal AxiosError class so `instanceof AxiosError` works in tests
+export class AxiosError extends Error {
+  isAxiosError = true;
+  response?: any;
+  request?: any;
+  config?: any;
+  code?: string;
+
+  constructor(message?: string, code?: string, config?: any, request?: any, response?: any) {
+    super(message);
+    this.name = 'AxiosError';
+    this.code = code;
+    this.config = config;
+    this.request = request;
+    this.response = response;
+  }
+
+  static isAxiosError(payload: unknown): payload is AxiosError {
+    return !!(payload && typeof payload === 'object' && (payload as AxiosError).isAxiosError);
+  }
+}
+
 export default {
   create,
+  AxiosError,
 };
 
