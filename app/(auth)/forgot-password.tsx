@@ -6,34 +6,47 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  SafeAreaView
+  Alert,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-
-import back from '../../assets/back.png';
+import { StatusBar } from 'expo-status-bar';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
 
   const handleSend = () => {
+    if (!email.trim()) {
+      Alert.alert('Missing email', 'Please enter your email first.');
+      return;
+    }
+
+    Alert.alert('Not available yet', 'Password recovery API is not available on backend yet.');
     router.push('/(auth)/reset-password');
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      
-      {/* vùng xám */}
-      <View style={styles.topGray}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Image source={back} style={styles.backIcon} />
-          </TouchableOpacity>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+      <StatusBar style="light" translucent backgroundColor="transparent" />
 
-          <Text style={styles.headerTitle}>Forgot password?</Text>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: insets.top + 8,
+            minHeight: 61 + insets.top,
+          },
+        ]}
+      >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Image source={require('../../assets/back.png')} style={styles.backIcon} />
+        </TouchableOpacity>
 
-          <View style={{ width: 40 }} />
-        </View>
+        <Text style={styles.headerTitle}>Forgot Password</Text>
+
+        <View style={styles.headerSpacer} />
       </View>
 
       <View style={styles.form}>
@@ -51,6 +64,13 @@ export default function ForgotPasswordScreen() {
             SEND PASSWORD RECOVERY
           </Text>
         </TouchableOpacity>
+
+        <View style={styles.switchRow}>
+          <Text style={styles.switchText}>Back to</Text>
+          <TouchableOpacity onPress={() => router.push('/(auth)/signin')}>
+            <Text style={styles.switchLink}>Sign in</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -62,32 +82,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
 
-  topGray: {
-    backgroundColor: '#1C1C1E',
-    paddingTop: 50,
-    paddingBottom: 20,
-  },
-
   header: {
-    height: 60,
+    backgroundColor: '#1C1C1E',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 30,
-    
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    minHeight: 61,
   },
 
   headerTitle: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 24,
+    lineHeight: 32,
+    fontFamily: 'Lexend_400Regular',
   },
 
   backBtn: {
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
     justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+
+  headerSpacer: {
+    width: 48,
+    height: 48,
   },
 
   backIcon: {
@@ -100,7 +121,7 @@ const styles = StyleSheet.create({
   form: {
     flex: 1,
     paddingHorizontal: 25,
-    marginTop: 25,
+    marginTop: 20,
   },
 
   label: {
@@ -131,5 +152,21 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontSize: 16,
     letterSpacing: 1,
+  },
+  switchRow: {
+    marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  switchText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  switchLink: {
+    color: '#F2994A',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

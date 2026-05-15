@@ -16,7 +16,7 @@ export default function TabLayout() {
       }}>
       {/* Tab 1 — Home */}
       <Tabs.Screen
-        name="home/index"
+        name="home"
         options={{
           title: 'Home',
           headerShown: false,
@@ -24,7 +24,7 @@ export default function TabLayout() {
       />
       {/* Tab 2 — Workout */}
       <Tabs.Screen
-        name="workout/index"
+        name="workout"
         options={{
           title: 'Workout',
           headerShown: false,
@@ -32,7 +32,7 @@ export default function TabLayout() {
       />
       {/* Tab 3 — Profile */}
       <Tabs.Screen
-        name="profile/index"
+        name="profile"
         options={{
           title: 'Profile',
           headerShown: false,

@@ -6,37 +6,84 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  SafeAreaView
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useSignUp } from '@/hooks/useSignUp';
+import { useGoogleLogin } from '@/hooks/useGoogleLogin';
+import ApiErrorDialog from '@/components/ApiErrorDialog';
+import { toApiErrorMessage } from '@/utils/apiErrorMessage';
 
 import gg from '../../assets/gg.png';
 import back from '../../assets/back.png';
 
 export default function SignUpScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [apiError, setApiError] = useState<string | null>(null);
+  const { mutate: signUp, isPending: signingUp } = useSignUp();
+  const { mutate: signInWithGoogle, isPending: googleSigningIn } = useGoogleLogin();
 
-  const handleSignUp = () => {
-    router.replace('/(tabs)');
+  const showApiError = (message?: string) => {
+    setApiError(toApiErrorMessage(message));
   };
 
+  const handleSignUp = () => {
+    if (!email.trim() || !password.trim() || !username.trim()) {
+      Alert.alert('Missing information', 'Please enter email, password, and username.');
+      return;
+    }
+
+    signUp(
+      {
+        email: email.trim(),
+        password,
+        username: username.trim(),
+      },
+      {
+        onError: (err) => {
+          showApiError(err.message);
+        },
+      },
+    );
+  };
+
+  const handleGoogleSignUp = () => {
+    signInWithGoogle(undefined, {
+      onError: (err) => {
+        showApiError(err.message ?? 'An unexpected error occurred.');
+      },
+    });
+  };
+
+  const isBusy = signingUp || googleSigningIn;
+
   return (
-    <SafeAreaView style={styles.container}>
-      
-      {/* vùng xám */}
-      <View style={styles.topGray}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Image source={back} style={styles.backIcon} />
-          </TouchableOpacity>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+      <StatusBar style="light" translucent backgroundColor="transparent" />
 
-          <Text style={styles.headerTitle}>Sign up</Text>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: insets.top + 8,
+            minHeight: 61 + insets.top,
+          },
+        ]}
+      >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Image source={back} style={styles.backIcon} />
+        </TouchableOpacity>
 
-          <View style={{ width: 40 }} />
-        </View>
+        <Text style={styles.headerTitle}>Sign up</Text>
+
+        <View style={styles.headerSpacer} />
       </View>
 
       <View style={styles.form}>
@@ -72,18 +119,31 @@ export default function SignUpScreen() {
         />
 
         {/* Sign Up */}
-        <TouchableOpacity style={styles.signUpBtn} onPress={handleSignUp}>
-          <Text style={styles.signUpBtnText}>SIGN UP</Text>
+        <TouchableOpacity style={styles.signUpBtn} onPress={handleSignUp} disabled={isBusy}>
+          {signingUp ? <ActivityIndicator color="#000" /> : <Text style={styles.signUpBtnText}>SIGN UP</Text>}
         </TouchableOpacity>
 
         <Text style={styles.or}>or</Text>
 
         {/* Google */}
-        <TouchableOpacity style={styles.googleBtn} onPress={handleSignUp}>
-          <Image source={gg} style={styles.googleIcon} />
-          <Text style={styles.googleBtnText}>Sign up with Google</Text>
+        <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleSignUp} disabled={isBusy}>
+          {googleSigningIn ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Image source={gg} style={styles.googleIcon} />
+              <Text style={styles.googleBtnText}>Sign up with Google</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
+
+      <ApiErrorDialog
+        visible={Boolean(apiError)}
+        title="Sign-up failed"
+        message={apiError ?? ''}
+        onClose={() => setApiError(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -94,31 +154,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
 
-  topGray: {
-    backgroundColor: '#1C1C1E',
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
-
   header: {
-    height: 60,
+    backgroundColor: '#1C1C1E',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 30,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    minHeight: 61,
   },
 
   headerTitle: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 24,
+    lineHeight: 32,
+    fontFamily: 'Lexend_400Regular',
   },
 
   backBtn: {
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
     justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+
+  headerSpacer: {
+    width: 48,
+    height: 48,
   },
 
   backIcon: {
@@ -131,7 +193,7 @@ const styles = StyleSheet.create({
   form: {
     flex: 1,
     paddingHorizontal: 25,
-    marginTop: 25,
+    marginTop: 20,
   },
 
   label: {
@@ -194,5 +256,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
     marginRight: 20,
+  },
+  switchRow: {
+    marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  switchText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  switchLink: {
+    color: '#F2994A',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

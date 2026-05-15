@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
+import { clearSentryUser } from '@/utils/sentryUser';
 
 /**
  * Base URL is read from the Expo public environment variable.
@@ -7,7 +8,7 @@ import { useAuthStore } from '../store/authStore';
  * e.g.  PUBLIC_EXPO_BACKEND_URL=https://api.gitfit.app
  */
 const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
-console.log(`API Client configured with base URL: ${BASE_URL}`);
+//console.log(`API Client configured with base URL: ${BASE_URL}`);
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -38,21 +39,24 @@ apiClient.interceptors.response.use(
       const { refreshToken, setTokens, clearAuth } = useAuthStore.getState();
 
       if (!refreshToken) {
+        clearSentryUser();
         clearAuth();
         return Promise.reject(error);
       }
 
       try {
-        const { data } = await axios.post<{ accessToken: string }>(
+        const { data } = await axios.post<{ success: boolean; data: { accessToken: string } }>(
           `${BASE_URL}/auth/refresh`,
           null,
           { headers: { Authorization: `Bearer ${refreshToken}` } },
         );
 
-        setTokens({ accessToken: data.accessToken, refreshToken });
-        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        const nextAccessToken = data.data.accessToken;
+        setTokens({ accessToken: nextAccessToken, refreshToken });
+        originalRequest.headers.Authorization = `Bearer ${nextAccessToken}`;
         return apiClient(originalRequest);
       } catch {
+        clearSentryUser();
         clearAuth();
         return Promise.reject(error);
       }

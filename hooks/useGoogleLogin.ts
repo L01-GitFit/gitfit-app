@@ -9,6 +9,7 @@ import { useMutation } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { apiClient } from '../utils/apiClient';
 import { useAuthStore, AuthUser } from '../store/authStore';
+import { identifySentryUser } from '@/utils/sentryUser';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -105,6 +106,7 @@ export function useGoogleLogin() {
 
     onSuccess: (data) => {
       // Persist tokens and user profile into the secure Zustand store
+      identifySentryUser(data.user);
       setAuth({
         accessToken: data.accessToken,
         refreshToken: data.refreshToken,

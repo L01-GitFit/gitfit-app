@@ -2,35 +2,58 @@ import axios from 'axios';
 import type { ExternalExercise, PaginatedResponse } from '../types/exercise.types';
 
 const EXERCISEDB_BASE_URL = 'https://exercisedb-api-mauve.vercel.app/api/v1';
+const DEFAULT_LIMIT = 10;
 
-const client = axios.create({ baseURL: EXERCISEDB_BASE_URL });
+let client = axios.create({ baseURL: EXERCISEDB_BASE_URL });
+
+// For testing purposes
+export function __setClient(newClient: any) {
+  client = newClient;
+}
+
+function toOffset(page: number, limit: number): number {
+  return Math.max(0, (page - 1) * limit);
+}
+
+type NamedListItem = {
+  name: string;
+};
+
+function mapNamedListResponse(data: { success: boolean; data: NamedListItem[] }) {
+  return {
+    success: data.success,
+    data: data.data.map((item) => item.name),
+  };
+}
 
 export async function searchExercises(
   query: string,
   page = 1,
-  limit = 10,
+  limit = DEFAULT_LIMIT,
 ): Promise<PaginatedResponse<ExternalExercise>> {
   const { data } = await client.get('/exercises/search', {
-    params: { query, page, limit },
+    params: { q: query, offset: toOffset(page, limit), limit },
   });
   return data;
 }
 
 export async function getExercises(
   page = 1,
-  limit = 10,
+  limit = DEFAULT_LIMIT,
 ): Promise<PaginatedResponse<ExternalExercise>> {
-  const { data } = await client.get('/exercises', { params: { page, limit } });
+  const { data } = await client.get('/exercises', {
+    params: { offset: toOffset(page, limit), limit },
+  });
   return data;
 }
 
 export async function getExercisesByBodyPart(
   bodyPart: string,
   page = 1,
-  limit = 10,
+  limit = DEFAULT_LIMIT,
 ): Promise<PaginatedResponse<ExternalExercise>> {
-  const { data } = await client.get(`/exercises/bodyPart/${encodeURIComponent(bodyPart)}`, {
-    params: { page, limit },
+  const { data } = await client.get(`/bodyparts/${encodeURIComponent(bodyPart)}/exercises`, {
+    params: { offset: toOffset(page, limit), limit },
   });
   return data;
 }
@@ -38,10 +61,10 @@ export async function getExercisesByBodyPart(
 export async function getExercisesByEquipment(
   equipment: string,
   page = 1,
-  limit = 10,
+  limit = DEFAULT_LIMIT,
 ): Promise<PaginatedResponse<ExternalExercise>> {
-  const { data } = await client.get(`/exercises/equipment/${encodeURIComponent(equipment)}`, {
-    params: { page, limit },
+  const { data } = await client.get(`/equipments/${encodeURIComponent(equipment)}/exercises`, {
+    params: { offset: toOffset(page, limit), limit },
   });
   return data;
 }
@@ -49,27 +72,27 @@ export async function getExercisesByEquipment(
 export async function getExercisesByMuscle(
   muscle: string,
   page = 1,
-  limit = 10,
+  limit = DEFAULT_LIMIT,
 ): Promise<PaginatedResponse<ExternalExercise>> {
-  const { data } = await client.get(`/exercises/muscle/${encodeURIComponent(muscle)}`, {
-    params: { page, limit },
+  const { data } = await client.get(`/muscles/${encodeURIComponent(muscle)}/exercises`, {
+    params: { offset: toOffset(page, limit), limit },
   });
   return data;
 }
 
 export async function getBodyParts(): Promise<{ success: boolean; data: string[] }> {
-  const { data } = await client.get('/exercises/bodyPartList');
-  return data;
+  const { data } = await client.get('/bodyparts');
+  return mapNamedListResponse(data);
 }
 
 export async function getEquipments(): Promise<{ success: boolean; data: string[] }> {
-  const { data } = await client.get('/exercises/equipmentList');
-  return data;
+  const { data } = await client.get('/equipments');
+  return mapNamedListResponse(data);
 }
 
 export async function getMuscles(): Promise<{ success: boolean; data: string[] }> {
-  const { data } = await client.get('/exercises/muscleList');
-  return data;
+  const { data } = await client.get('/muscles');
+  return mapNamedListResponse(data);
 }
 
 const exerciseDbService = {

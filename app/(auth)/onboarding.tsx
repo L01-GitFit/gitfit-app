@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 
-const LOGIN_HREF = '/(auth)/login' as Href;
+const SIGN_IN_HREF = '/(auth)/signin' as Href;
+const SIGN_UP_HREF = '/(auth)/signup' as Href;
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGoogleLogin } from '@/hooks/useGoogleLogin';
 
@@ -144,9 +145,15 @@ export default function OnboardingScreen() {
         scrollEventThrottle={16}
         renderItem={({ item }) => (
           <View style={{ width: SCREEN_WIDTH }} className="items-center pt-6">
-            <View className="w-[186px] h-[320px] rounded-[30px] overflow-hidden">
-              <Image source={item.phoneImage} className="w-full h-full" resizeMode="cover" />
+            {/* Khung điện thoại: Đã dọn sạch các ký tự thừa xung quanh */}
+            <View className="w-[186px] h-[400px] rounded-[30px] overflow-hidden">
+              <Image 
+                source={item.phoneImage} 
+                className="w-full h-full" 
+                resizeMode="cover" 
+              />
             </View>
+            
             <Text className="mt-6 font-lexend text-base text-white text-center px-8">
               {item.description}
             </Text>
@@ -181,7 +188,7 @@ export default function OnboardingScreen() {
 
         <TouchableOpacity
           className="flex-row items-center justify-center bg-[#f4f4f4] h-10 rounded-lg gap-2.5"
-          onPress={() => router.push(LOGIN_HREF)}
+          onPress={() => router.push(SIGN_UP_HREF)}
         >
           <Image
             source={require('@/assets/mail.png')}
@@ -193,7 +200,7 @@ export default function OnboardingScreen() {
 
         <View className="flex-row justify-center mt-1.5">
           <Text className="font-lexend text-xs text-[#f4f4f4]">Already have an account? </Text>
-          <TouchableOpacity onPress={() => router.push(LOGIN_HREF)}>
+          <TouchableOpacity onPress={() => router.push(SIGN_IN_HREF)}>
             <Text className="font-lexend-bold text-xs text-[#ee9033]">Log in</Text>
           </TouchableOpacity>
         </View>

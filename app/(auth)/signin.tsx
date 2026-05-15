@@ -6,36 +6,82 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  SafeAreaView
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useSignIn } from '@/hooks/useSignIn';
+import { useGoogleLogin } from '@/hooks/useGoogleLogin';
+import ApiErrorDialog from '@/components/ApiErrorDialog';
+import { toApiErrorMessage } from '@/utils/apiErrorMessage';
 
 import gg from '../../assets/gg.png';
 import back from '../../assets/back.png';
 
 export default function SignInScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [apiError, setApiError] = useState<string | null>(null);
+  const { mutate: signIn, isPending: signingIn } = useSignIn();
+  const { mutate: signInWithGoogle, isPending: googleSigningIn } = useGoogleLogin();
 
-  const handleSignIn = () => {
-    router.replace('/(tabs)');
+  const showApiError = (message?: string) => {
+    setApiError(toApiErrorMessage(message));
   };
 
+  const handleSignIn = () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Missing information', 'Please enter both email and password.');
+      return;
+    }
+
+    signIn(
+      {
+        email: email.trim(),
+        password,
+      },
+      {
+        onError: (err) => {
+          showApiError(err.message);
+        },
+      },
+    );
+  };
+
+  const handleGoogleSignIn = () => {
+    signInWithGoogle(undefined, {
+      onError: (err) => {
+        showApiError(err.message ?? 'An unexpected error occurred.');
+      },
+    });
+  };
+
+  const isBusy = signingIn || googleSigningIn;
+
   return (
-    <SafeAreaView style={styles.container}>
-      
-      {/* vùng xám trên cùng */}
-      <View style={styles.topGray}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Image source={back} style={styles.backIcon} />
-          </TouchableOpacity>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+      <StatusBar style="light" translucent backgroundColor="transparent" />
 
-          <Text style={styles.headerTitle}>Sign in</Text>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: insets.top + 8,
+            minHeight: 61 + insets.top,
+          },
+        ]}
+      >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Image source={back} style={styles.backIcon} />
+        </TouchableOpacity>
 
-          <View style={{ width: 40 }} />
-        </View>
+        <Text style={styles.headerTitle}>Sign in</Text>
+
+        <View style={styles.headerSpacer} />
       </View>
 
       <View style={styles.form}>
@@ -62,8 +108,8 @@ export default function SignInScreen() {
         />
 
         {/* Sign In */}
-        <TouchableOpacity style={styles.signInBtn} onPress={handleSignIn}>
-          <Text style={styles.signInBtnText}>SIGN IN</Text>
+        <TouchableOpacity style={styles.signInBtn} onPress={handleSignIn} disabled={isBusy}>
+          {signingIn ? <ActivityIndicator color="#000" /> : <Text style={styles.signInBtnText}>SIGN IN</Text>}
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
@@ -73,11 +119,24 @@ export default function SignInScreen() {
         <Text style={styles.or}>or</Text>
 
         {/* Google */}
-        <TouchableOpacity style={styles.googleBtn} onPress={handleSignIn}>
-          <Image source={gg} style={styles.googleIcon} />
-          <Text style={styles.googleBtnText}>Sign in with Google</Text>
+        <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleSignIn} disabled={isBusy}>
+          {googleSigningIn ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Image source={gg} style={styles.googleIcon} />
+              <Text style={styles.googleBtnText}>Sign in with Google</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
+
+      <ApiErrorDialog
+        visible={Boolean(apiError)}
+        title="Sign-in failed"
+        message={apiError ?? ''}
+        onClose={() => setApiError(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -88,33 +147,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
 
-  /* nền xám trên */
-  topGray: {
-    backgroundColor: '#1C1C1E',
-    paddingBottom: 20,
-    paddingTop: 50,
-  },
-
   header: {
-    height: 60,
+    backgroundColor: '#1C1C1E',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    minHeight: 61,
   },
 
   headerTitle: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-    paddingTop: 30,
+    fontSize: 24,
+    lineHeight: 32,
+    fontFamily: 'Lexend_400Regular',
   },
 
   backBtn: {
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
     justifyContent: 'center',
-    paddingTop: 30,
+    alignItems: 'flex-start',
+  },
+
+  headerSpacer: {
+    width: 48,
+    height: 48,
   },
 
   backIcon: {
@@ -127,7 +186,7 @@ const styles = StyleSheet.create({
   form: {
     flex: 1,
     paddingHorizontal: 25,
-    marginTop: 25,
+    marginTop: 20,
   },
 
   label: {
@@ -197,5 +256,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
     marginRight: 20,
+  },
+  switchRow: {
+    marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  switchText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  switchLink: {
+    color: '#F2994A',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

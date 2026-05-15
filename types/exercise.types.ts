@@ -9,6 +9,17 @@ export interface ExternalExercise {
   instructions: string[];
 }
 
+export interface UpsertExercisePayload {
+  exerciseDbId: string;
+  name: string;
+  gifUrl?: string;
+  targetMuscles: string[];
+  bodyParts: string[];
+  equipments: string[];
+  secondaryMuscles: string[];
+  instructions: string[];
+}
+
 export interface Exercise {
   id: string;
   exerciseDbId: string;
@@ -24,7 +35,7 @@ export interface Exercise {
 }
 
 export interface AddExerciseToRoutinePayload {
-  exercise: ExternalExercise;
+  exercise: UpsertExercisePayload;
   sets?: number;
   repsTarget?: string;
   weightTarget?: number;
@@ -33,7 +44,7 @@ export interface AddExerciseToRoutinePayload {
 }
 
 export interface LogSetPayload {
-  exercise: ExternalExercise;
+  exercise: UpsertExercisePayload;
   setNumber: number;
   reps?: number;
   weightKg?: number;
@@ -66,6 +77,8 @@ export interface PaginatedResponse<T> {
     totalExercises: number;
     currentPage: number;
     totalPages: number;
+    previousPage?: string | null;
+    nextPage?: string | null;
   };
 }
 

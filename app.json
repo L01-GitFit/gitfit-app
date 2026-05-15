@@ -18,8 +18,16 @@
       "expo-router",
       "expo-font",
       "expo-secure-store",
-      "@react-native-google-signin/google-signin",
-      "expo-web-browser"
+      //"@react-native-google-signin/google-signin",
+      "expo-web-browser",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "gitfit-pu"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
@@ -49,6 +57,11 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.diduide.gitfitexpoapp"
+    },
+    "androidStatusBar": {
+      "barStyle": "light-content",
+      "backgroundColor": "#000000",
+      "translucent": true
     },
     "extra": {
       "router": {},

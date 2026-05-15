@@ -6,11 +6,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  SafeAreaView
+  SafeAreaView,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-
-import back from '../../assets/back.png';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
@@ -18,6 +17,17 @@ export default function ResetPasswordScreen() {
   const [confirm, setConfirm] = useState('');
 
   const handleSubmit = () => {
+    if (!password || !confirm) {
+      Alert.alert('Missing information', 'Please enter and confirm your new password.');
+      return;
+    }
+
+    if (password !== confirm) {
+      Alert.alert('Password mismatch', 'Passwords do not match.');
+      return;
+    }
+
+    Alert.alert('Not available yet', 'Password reset confirmation API is not available on backend yet.');
     router.replace('/(auth)/signin');
   };
 
@@ -28,7 +38,7 @@ export default function ResetPasswordScreen() {
       <View style={styles.topGray}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Image source={back} style={styles.backIcon} />
+            <Image source={require('../../assets/back.png')} style={styles.backIcon} />
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>Forgot password?</Text>
@@ -59,6 +69,13 @@ export default function ResetPasswordScreen() {
         <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
           <Text style={styles.submitBtnText}>SUBMIT</Text>
         </TouchableOpacity>
+
+        <View style={styles.switchRow}>
+          <Text style={styles.switchText}>Remember your password?</Text>
+          <TouchableOpacity onPress={() => router.replace('/(auth)/signin')}>
+            <Text style={styles.switchLink}>Sign in</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -138,5 +155,21 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontSize: 16,
     letterSpacing: 1,
+  },
+  switchRow: {
+    marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  switchText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  switchLink: {
+    color: '#F2994A',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

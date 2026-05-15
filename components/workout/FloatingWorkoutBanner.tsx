@@ -45,7 +45,7 @@ export default function FloatingWorkoutBanner({ workout, onExpand, onDiscard }: 
           hitSlop={8}
           className="bg-[#d2ad05] rounded-[32px] w-16 h-16 items-center justify-center"
         >
-          <MaterialIcons name="delete" size={28} color="#111" />
+          <MaterialIcons name="delete" size={28} color="#FF6868" />
         </TouchableOpacity>
       </TouchableOpacity>
     </View>
