@@ -1,6 +1,7 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import { ActivityIndicator, Alert, Animated, FlatList } from 'react-native';
+import { AxiosError } from 'axios';
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
@@ -14,9 +15,30 @@ const mockResetSession = jest.fn();
 const mockTrackWorkoutLogged = jest.fn();
 const mockTrackProgressChartViewed = jest.fn();
 
+const mockAllFetchNextPage = jest.fn();
+const mockEquipmentFetchNextPage = jest.fn();
+const mockMuscleFetchNextPage = jest.fn();
+const mockSearchFetchNextPage = jest.fn();
+
 const mockLogSet = { mutateAsync: jest.fn().mockResolvedValue(undefined), isPending: false };
 let mockMode: 'routine' | 'workout' = 'routine';
 let mockExercisesCatalog: Array<{ exerciseId: string; name: string; gifUrl?: string | null }> = [];
+let mockSearchExercises: Array<{ exerciseId: string; name: string; gifUrl?: string | null }> = [];
+let mockEquipmentExercises: Array<{ exerciseId: string; name: string; gifUrl?: string | null }> = [];
+let mockMuscleExercises: Array<{ exerciseId: string; name: string; gifUrl?: string | null }> = [];
+let mockAllIsLoading = false;
+let mockAllIsFetchingNextPage = false;
+let mockAllHasNextPage = false;
+let mockEquipmentIsLoading = false;
+let mockEquipmentIsFetchingNextPage = false;
+let mockEquipmentHasNextPage = false;
+let mockMuscleIsLoading = false;
+let mockMuscleIsFetchingNextPage = false;
+let mockMuscleHasNextPage = false;
+let mockSearchIsLoading = false;
+let mockSearchIsFetchingNextPage = false;
+let mockSearchHasNextPage = false;
+let mockExercisePreviousData: any = {};
 
 let mockRoutineState: any = {};
 let mockWorkoutState: any = {};
@@ -87,18 +109,42 @@ jest.mock('@tanstack/react-query', () => ({
     }
 
     if (key[0] === 'exercise-previous') {
-      return { data: {}, isLoading: false };
+      return { data: mockExercisePreviousData, isLoading: false };
     }
 
     return { data: undefined, isLoading: false };
   }),
-  useInfiniteQuery: jest.fn(() => ({
-    data: { pages: [{ data: mockExercisesCatalog }] },
-    isLoading: false,
-    isFetchingNextPage: false,
-    hasNextPage: false,
-    fetchNextPage: jest.fn(),
-  })),
+  useInfiniteQuery: jest.fn((options: { queryKey: unknown[] }) => {
+    const key = options.queryKey;
+
+    if (key[1] === 'equipment') {
+      return {
+        data: { pages: [{ data: mockEquipmentExercises }] },
+        isLoading: mockEquipmentIsLoading,
+        isFetchingNextPage: mockEquipmentIsFetchingNextPage,
+        hasNextPage: mockEquipmentHasNextPage,
+        fetchNextPage: mockEquipmentFetchNextPage,
+      };
+    }
+
+    if (key[1] === 'muscle') {
+      return {
+        data: { pages: [{ data: mockMuscleExercises }] },
+        isLoading: mockMuscleIsLoading,
+        isFetchingNextPage: mockMuscleIsFetchingNextPage,
+        hasNextPage: mockMuscleHasNextPage,
+        fetchNextPage: mockMuscleFetchNextPage,
+      };
+    }
+
+    return {
+      data: { pages: [{ data: mockExercisesCatalog }] },
+      isLoading: mockAllIsLoading,
+      isFetchingNextPage: mockAllIsFetchingNextPage,
+      hasNextPage: mockAllHasNextPage,
+      fetchNextPage: mockAllFetchNextPage,
+    };
+  }),
   useMutation: jest.fn((options: { mutationFn: (...args: any[]) => Promise<any> | any }) => ({
     mutateAsync: jest.fn((...args: any[]) => options.mutationFn(...args)),
     isPending: false,
@@ -108,11 +154,11 @@ jest.mock('@tanstack/react-query', () => ({
 
 jest.mock('@/hooks/useExerciseSearch', () => ({
   useExerciseSearch: () => ({
-    data: undefined,
-    isLoading: false,
-    isFetchingNextPage: false,
-    hasNextPage: false,
-    fetchNextPage: jest.fn(),
+    data: { pages: [{ data: mockSearchExercises }] },
+    isLoading: mockSearchIsLoading,
+    isFetchingNextPage: mockSearchIsFetchingNextPage,
+    hasNextPage: mockSearchHasNextPage,
+    fetchNextPage: mockSearchFetchNextPage,
   }),
 }));
 
@@ -259,8 +305,25 @@ function resetState() {
 
 beforeEach(() => {
   resetState();
+  jest.useRealTimers();
   mockMode = 'routine';
   mockExercisesCatalog = [];
+  mockSearchExercises = [];
+  mockEquipmentExercises = [];
+  mockMuscleExercises = [];
+  mockAllIsLoading = false;
+  mockAllIsFetchingNextPage = false;
+  mockAllHasNextPage = false;
+  mockEquipmentIsLoading = false;
+  mockEquipmentIsFetchingNextPage = false;
+  mockEquipmentHasNextPage = false;
+  mockMuscleIsLoading = false;
+  mockMuscleIsFetchingNextPage = false;
+  mockMuscleHasNextPage = false;
+  mockSearchIsLoading = false;
+  mockSearchIsFetchingNextPage = false;
+  mockSearchHasNextPage = false;
+  mockExercisePreviousData = {};
 
   mockPush.mockClear();
   mockBack.mockClear();
@@ -273,8 +336,14 @@ beforeEach(() => {
   mockResetSession.mockClear();
   mockTrackWorkoutLogged.mockClear();
   mockTrackProgressChartViewed.mockClear();
+  mockAllFetchNextPage.mockClear();
+  mockEquipmentFetchNextPage.mockClear();
+  mockMuscleFetchNextPage.mockClear();
+  mockSearchFetchNextPage.mockClear();
   mockLogSet.mutateAsync.mockClear();
   mockLogSet.mutateAsync.mockResolvedValue(undefined);
+
+  jest.restoreAllMocks();
 
   jest.mocked(gitfitService.createRoutine).mockReset();
   jest.mocked(gitfitService.addExerciseToRoutine).mockReset();
@@ -302,6 +371,15 @@ describe('Create routine screen', () => {
     fireEvent.press(getByText('Add Exercise'));
 
     expect(mockPush).toHaveBeenCalledWith('/add-exercise?mode=routine');
+  });
+
+  it('cancels creation, discards draft, and goes back', () => {
+    const { getByText } = render(<CreateRoutineScreen />);
+
+    fireEvent.press(getByText('Cancel'));
+
+    expect(mockRoutineState.discardDraft).toHaveBeenCalledTimes(1);
+    expect(mockBack).toHaveBeenCalledTimes(1);
   });
 
   it('saves routine and sends exercises to backend', async () => {
@@ -335,6 +413,133 @@ describe('Create routine screen', () => {
     expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['routines'] });
     expect(mockRoutineState.discardDraft).toHaveBeenCalledTimes(1);
     expect(mockBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('normalizes invalid exercise fields before sending them to backend', async () => {
+    mockRoutineState.draftName = '  Pull Day  ';
+    mockRoutineState.draftExercises = [
+      {
+        id: 'draft-2',
+        notes: '',
+        sets: [{ id: 'set-1', setNumber: 1, reps: null, weightKg: null }],
+        exercise: {
+          exerciseId: '  ex-2  ',
+          name: '  Lat Pulldown  ',
+          gifUrl: '',
+          targetMuscles: null,
+          bodyParts: undefined,
+          equipments: 'cable',
+          secondaryMuscles: null,
+          instructions: 'pull down',
+        },
+      },
+    ];
+
+    const { getByText } = render(<CreateRoutineScreen />);
+
+    fireEvent.press(getByText('Save'));
+
+    await waitFor(() => {
+      expect(jest.mocked(gitfitService.addExerciseToRoutine)).toHaveBeenCalledWith(
+        'routine-1',
+        {
+          exercise: {
+            exerciseDbId: 'ex-2',
+            name: 'Lat Pulldown',
+            gifUrl: undefined,
+            targetMuscles: [],
+            bodyParts: [],
+            equipments: [],
+            secondaryMuscles: [],
+            instructions: [],
+          },
+          sets: 1,
+          repsTarget: undefined,
+          weightTarget: undefined,
+          orderIndex: 0,
+        },
+      );
+    });
+  });
+
+  it('updates draft fields and invokes row actions for populated exercises', () => {
+    mockRoutineState.draftExercises = [
+      {
+        id: 'draft-1',
+        notes: 'initial notes',
+        sets: [{ id: 'set-1', setNumber: 1, reps: 8, weightKg: 60 }],
+        exercise: {
+          exerciseId: 'ex-1',
+          name: 'Bench Press',
+          gifUrl: 'https://example.com/bench.gif',
+          targetMuscles: ['chest'],
+          bodyParts: ['upper body'],
+          equipments: ['barbell'],
+          secondaryMuscles: ['triceps'],
+          instructions: ['press up'],
+        },
+      },
+    ];
+
+    const { getByPlaceholderText, getByText } = render(<CreateRoutineScreen />);
+
+    fireEvent.changeText(getByPlaceholderText('Routine title'), 'Leg Day');
+    fireEvent.changeText(getByPlaceholderText('Add notes here...'), 'tempo work');
+    fireEvent.press(getByText('Change kg'));
+    fireEvent.press(getByText('Change reps'));
+    fireEvent.press(getByText('Delete set'));
+    fireEvent.press(getByText('Add set'));
+    fireEvent.press(getByText('more-vert'));
+
+    expect(mockRoutineState.setDraftName).toHaveBeenCalledWith('Leg Day');
+    expect(mockRoutineState.updateDraftExerciseNotes).toHaveBeenCalledWith('draft-1', 'tempo work');
+    expect(mockRoutineState.updateDraftSet).toHaveBeenCalledWith('draft-1', 1, { weightKg: 80 });
+    expect(mockRoutineState.updateDraftSet).toHaveBeenCalledWith('draft-1', 1, { reps: 10 });
+    expect(mockRoutineState.removeDraftSet).toHaveBeenCalledWith('draft-1', 1);
+    expect(mockRoutineState.addSetToDraftExercise).toHaveBeenCalledWith('draft-1');
+    expect(mockRoutineState.removeExerciseFromDraft).toHaveBeenCalledWith('draft-1');
+  });
+
+  it('shows the first API validation message when axios returns an array', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    mockRoutineState.draftExercises = [
+      {
+        id: 'draft-1',
+        notes: '',
+        sets: [{ id: 'set-1', setNumber: 1, reps: 8, weightKg: 60 }],
+        exercise: {
+          exerciseId: 'ex-1',
+          name: 'Bench Press',
+          targetMuscles: [],
+          bodyParts: [],
+          equipments: [],
+          secondaryMuscles: [],
+          instructions: [],
+        },
+      },
+    ];
+    jest.mocked(gitfitService.createRoutine).mockRejectedValue(
+      new AxiosError(
+        'Request failed',
+        '400',
+        undefined,
+        undefined,
+        { data: { message: ['Routine name already exists', 'Other error'] } } as any,
+      ),
+    );
+
+    const { getByText } = render(<CreateRoutineScreen />);
+
+    fireEvent.press(getByText('Save'));
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith(
+        'Create routine failed',
+        'Routine name already exists',
+      );
+    });
+
+    alertSpy.mockRestore();
   });
 
   it('shows alert when save fails', async () => {
@@ -380,6 +585,27 @@ describe('Add exercise screen', () => {
     expect(mockBack).toHaveBeenCalledTimes(1);
   });
 
+  it('toggles selection count, plural label, and deselection', () => {
+    mockExercisesCatalog = [
+      { exerciseId: 'ex-1', name: 'Push Up' },
+      { exerciseId: 'ex-2', name: 'Squat' },
+    ];
+
+    const { getByText, queryByText } = render(<AddExerciseScreen />);
+
+    fireEvent.press(getByText('Push Up'));
+    expect(getByText('ADD 1 EXERCISE')).toBeTruthy();
+
+    fireEvent.press(getByText('Squat'));
+    expect(getByText('ADD 2 EXERCISES')).toBeTruthy();
+
+    fireEvent.press(getByText('Push Up'));
+    expect(getByText('ADD 1 EXERCISE')).toBeTruthy();
+
+    fireEvent.press(getByText('Squat'));
+    expect(queryByText('ADD 1 EXERCISE')).toBeNull();
+  });
+
   it('selects exercise and adds to routine draft', () => {
     mockExercisesCatalog = [{ exerciseId: 'ex-1', name: 'Push Up' }];
 
@@ -404,6 +630,83 @@ describe('Add exercise screen', () => {
     expect(mockAddExercise).toHaveBeenCalledWith({ exerciseId: 'ex-2', name: 'Squat' });
     expect(mockBack).toHaveBeenCalledTimes(1);
   });
+
+  it('switches to search results and clears back to the default list', () => {
+    mockExercisesCatalog = [{ exerciseId: 'ex-1', name: 'Push Up' }];
+    mockSearchExercises = [{ exerciseId: 'ex-3', name: 'Row' }];
+
+    const { getByPlaceholderText, getByText, queryByText } = render(<AddExerciseScreen />);
+
+    fireEvent.changeText(getByPlaceholderText('Search exercise'), 'row');
+    expect(getByText('Row')).toBeTruthy();
+    expect(queryByText('Push Up')).toBeNull();
+
+    fireEvent.press(getByText('close'));
+    expect(getByText('Push Up')).toBeTruthy();
+  });
+
+  it('applies and clears equipment filter from the modal', () => {
+    mockExercisesCatalog = [{ exerciseId: 'ex-1', name: 'Push Up' }];
+    mockEquipmentExercises = [{ exerciseId: 'ex-4', name: 'Dumbbell Curl' }];
+
+    const { getByText, queryByText } = render(<AddExerciseScreen />);
+
+    fireEvent.press(getByText('All Equipments'));
+    expect(getByText('Equipment')).toBeTruthy();
+
+    fireEvent.press(getByText('dumbbell'));
+    expect(getByText('Dumbbell Curl')).toBeTruthy();
+    expect(queryByText('Push Up')).toBeNull();
+
+    fireEvent.press(getByText('dumbbell'));
+    fireEvent.press(getByText('All Equipments'));
+    expect(getByText('Push Up')).toBeTruthy();
+  });
+
+  it('applies muscle filter and fetches next page for all, search, equipment, and muscle sources', () => {
+    mockExercisesCatalog = [{ exerciseId: 'ex-1', name: 'Push Up' }];
+    mockSearchExercises = [{ exerciseId: 'ex-3', name: 'Row' }];
+    mockEquipmentExercises = [{ exerciseId: 'ex-4', name: 'Dumbbell Curl' }];
+    mockMuscleExercises = [{ exerciseId: 'ex-5', name: 'Fly' }];
+    mockAllHasNextPage = true;
+    mockSearchHasNextPage = true;
+    mockEquipmentHasNextPage = true;
+    mockMuscleHasNextPage = true;
+
+    const screen = render(<AddExerciseScreen />);
+    const list = () => screen.UNSAFE_getByType(FlatList);
+
+    list().props.onEndReached();
+    expect(mockAllFetchNextPage).toHaveBeenCalledTimes(1);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Search exercise'), 'row');
+    list().props.onEndReached();
+    expect(mockSearchFetchNextPage).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(screen.getByText('close'));
+    fireEvent.press(screen.getByText('All Equipments'));
+    fireEvent.press(screen.getByText('dumbbell'));
+    list().props.onEndReached();
+    expect(mockEquipmentFetchNextPage).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(screen.getByText('All Muscles'));
+    fireEvent.press(screen.getByText('chest'));
+    list().props.onEndReached();
+    expect(mockMuscleFetchNextPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows loading indicators for both default and search states', () => {
+    mockAllIsLoading = true;
+    const defaultScreen = render(<AddExerciseScreen />);
+    expect(defaultScreen.UNSAFE_getAllByType(ActivityIndicator).length).toBeGreaterThan(0);
+    defaultScreen.unmount();
+
+    mockAllIsLoading = false;
+    mockSearchIsLoading = true;
+    const searchScreen = render(<AddExerciseScreen />);
+    fireEvent.changeText(searchScreen.getByPlaceholderText('Search exercise'), 'row');
+    expect(searchScreen.UNSAFE_getAllByType(ActivityIndicator).length).toBeGreaterThan(0);
+  });
 });
 
 describe('Workout log screen', () => {
@@ -416,6 +719,51 @@ describe('Workout log screen', () => {
 
     fireEvent.press(getByText('Finish'));
     expect(mockBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('auto-adds baseline sets for newly added exercises with no sets yet', async () => {
+    const addSet = jest.fn();
+    mockExercisePreviousData = {
+      'ex-1': {
+        previous: '55kg x 5',
+        maxWeight: 55,
+        maxReps: 5,
+        setCount: 2,
+      },
+    };
+    mockWorkoutState.exercises = [
+      {
+        id: 'active-1',
+        externalExercise: {
+          exerciseId: 'ex-1',
+          name: 'Bench Press',
+          gifUrl: 'https://example.com/bench.gif',
+          targetMuscles: [],
+          bodyParts: [],
+          equipments: [],
+          secondaryMuscles: [],
+          instructions: [],
+        },
+        sets: [],
+      },
+    ];
+    mockWorkoutState.addSet = addSet;
+
+    render(<WorkoutLogScreen />);
+
+    await waitFor(() => {
+      expect(addSet).toHaveBeenCalledTimes(2);
+    });
+    expect(addSet).toHaveBeenNthCalledWith(
+      1,
+      'active-1',
+      expect.objectContaining({ previous: '55kg x 5', setNumber: 1 }),
+    );
+    expect(addSet).toHaveBeenNthCalledWith(
+      2,
+      'active-1',
+      expect.objectContaining({ previous: '55kg x 5', setNumber: 2 }),
+    );
   });
 
   it('logs completed sets and finishes workout', async () => {
@@ -466,6 +814,81 @@ describe('Workout log screen', () => {
     expect(mockBack).toHaveBeenCalledTimes(1);
   });
 
+  it('renders stats, adds an exercise, and forwards exercise row actions', () => {
+    jest.spyOn(Date, 'now').mockReturnValue(new Date('2026-05-15T10:01:05.000Z').getTime());
+
+    const addSet = jest.fn();
+    const updateSet = jest.fn();
+    const removeSet = jest.fn();
+    const removeExercise = jest.fn();
+    mockExercisePreviousData = {
+      'ex-1': {
+        previous: '60kg x 8',
+        maxWeight: 60,
+        maxReps: 8,
+        setCount: 1,
+      },
+    };
+    mockWorkoutState.sessionId = 'session-1';
+    mockWorkoutState.startedAt = '2026-05-15T10:00:00.000Z';
+    mockWorkoutState.addSet = addSet;
+    mockWorkoutState.updateSet = updateSet;
+    mockWorkoutState.removeSet = removeSet;
+    mockWorkoutState.removeExercise = removeExercise;
+    mockWorkoutState.exercises = [
+      {
+        id: 'active-1',
+        externalExercise: {
+          exerciseId: 'ex-1',
+          name: 'Bench Press',
+          gifUrl: 'https://example.com/bench.gif',
+          targetMuscles: ['chest'],
+          bodyParts: ['upper body'],
+          equipments: ['barbell'],
+          secondaryMuscles: ['triceps'],
+          instructions: ['press up'],
+        },
+        sets: [
+          {
+            id: 'set-1',
+            setNumber: 1,
+            reps: 8,
+            weightKg: 70,
+            rpe: 8,
+            isWarmup: false,
+            isCompleted: true,
+            isPr: false,
+            exerciseName: 'Bench Press',
+            exerciseDbId: 'ex-1',
+            gifUrl: 'https://example.com/bench.gif',
+            previous: '60kg x 8',
+          },
+        ],
+      },
+    ];
+
+    const { getByText } = render(<WorkoutLogScreen />);
+
+    expect(getByText('1m 5s')).toBeTruthy();
+    expect(getByText('560 Kg')).toBeTruthy();
+    expect(getByText('8')).toBeTruthy();
+
+    fireEvent.press(getByText('Add Exercise'));
+    fireEvent.press(getByText('Add set action'));
+    fireEvent.press(getByText('Update set action'));
+    fireEvent.press(getByText('Remove set action'));
+    fireEvent.press(getByText('Remove exercise action'));
+
+    expect(mockPush).toHaveBeenCalledWith('/add-exercise?mode=workout');
+    expect(addSet).toHaveBeenCalledWith(
+      'active-1',
+      expect.objectContaining({ previous: '60kg x 8', setNumber: 2 }),
+    );
+    expect(updateSet).toHaveBeenCalledWith('active-1', 1, { reps: 10 });
+    expect(removeSet).toHaveBeenCalledWith('active-1', 1);
+    expect(removeExercise).toHaveBeenCalledWith('active-1');
+  });
+
   it('auto-fills values from previous set when toggling an empty set', () => {
     const updateSet = jest.fn();
     const toggleSet = jest.fn();
@@ -506,6 +929,112 @@ describe('Workout log screen', () => {
     expect(toggleSet).toHaveBeenCalledWith('active-1', 1);
   });
 
+  it('shows achievement banner for new personal records', async () => {
+    jest.spyOn(Animated, 'timing').mockReturnValue({
+      start: (callback?: () => void) => callback?.(),
+    } as any);
+    jest.spyOn(global, 'setTimeout').mockImplementation(() => 0 as any);
+    jest.spyOn(global, 'clearTimeout').mockImplementation(() => undefined);
+
+    const updateSet = jest.fn();
+    mockExercisePreviousData = {
+      'ex-1': {
+        previous: '60kg x 7',
+        maxWeight: 60,
+        maxReps: 7,
+        setCount: 1,
+      },
+    };
+    mockWorkoutState.updateSet = updateSet;
+    mockWorkoutState.exercises = [
+      {
+        id: 'active-1',
+        externalExercise: {
+          exerciseId: 'ex-1',
+          name: 'Bench Press',
+          gifUrl: 'https://example.com/bench.gif',
+          targetMuscles: [],
+          bodyParts: [],
+          equipments: [],
+          secondaryMuscles: [],
+          instructions: [],
+        },
+        sets: [
+          {
+            id: 'set-1',
+            setNumber: 1,
+            reps: 8,
+            weightKg: 70,
+            rpe: null,
+            isWarmup: false,
+            isCompleted: true,
+            isPr: false,
+            exerciseName: 'Bench Press',
+            exerciseDbId: 'ex-1',
+            gifUrl: 'https://example.com/bench.gif',
+            previous: '60kg x 7',
+          },
+        ],
+      },
+    ];
+
+    const { getByText, unmount } = render(<WorkoutLogScreen />);
+
+    await waitFor(() => {
+      expect(updateSet).toHaveBeenCalledWith('active-1', 1, { isPr: true });
+    });
+    expect(getByText('New Max Weight & Reps - 70kg x 8')).toBeTruthy();
+
+    unmount();
+  });
+
+  it('shows alert when finish fails', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    mockWorkoutState.sessionId = 'session-1';
+    mockWorkoutState.exercises = [
+      {
+        id: 'active-1',
+        externalExercise: {
+          exerciseId: 'ex-1',
+          name: 'Bench Press',
+          gifUrl: 'https://example.com/bench.gif',
+          targetMuscles: [],
+          bodyParts: [],
+          equipments: [],
+          secondaryMuscles: [],
+          instructions: [],
+        },
+        sets: [
+          {
+            id: 'set-1',
+            setNumber: 1,
+            reps: 8,
+            weightKg: 70,
+            rpe: null,
+            isWarmup: false,
+            isCompleted: true,
+            isPr: false,
+            exerciseName: 'Bench Press',
+            exerciseDbId: 'ex-1',
+            gifUrl: 'https://example.com/bench.gif',
+            previous: '-',
+          },
+        ],
+      },
+    ];
+    jest.mocked(gitfitService.finishWorkoutSession).mockRejectedValue(new Error('Cannot finish workout'));
+
+    const { getByText } = render(<WorkoutLogScreen />);
+
+    fireEvent.press(getByText('Finish'));
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Finish failed', 'Cannot finish workout');
+    });
+
+    alertSpy.mockRestore();
+  });
+
   it('opens discard dialog and confirms cancellation', async () => {
     mockWorkoutState.sessionId = 'session-1';
 
@@ -518,6 +1047,21 @@ describe('Workout log screen', () => {
       expect(jest.mocked(gitfitService.cancelWorkoutSession)).toHaveBeenCalledWith('session-1');
     });
     expect(mockResetSession).toHaveBeenCalledTimes(1);
+    expect(mockBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('still resets locally when backend cancellation fails', async () => {
+    mockWorkoutState.sessionId = 'session-1';
+    jest.mocked(gitfitService.cancelWorkoutSession).mockRejectedValue(new Error('Cannot cancel'));
+
+    const { getByText } = render(<WorkoutLogScreen />);
+
+    fireEvent.press(getByText('Discard Workout'));
+    fireEvent.press(getByText('Confirm discard'));
+
+    await waitFor(() => {
+      expect(mockResetSession).toHaveBeenCalledTimes(1);
+    });
     expect(mockBack).toHaveBeenCalledTimes(1);
   });
 
