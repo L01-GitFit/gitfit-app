@@ -53,8 +53,9 @@ const VARIANT_STYLES = {
 } as const;
 
 function parsePrevious(prev: string): { weightKg: number; reps: number } | null {
-  if (!prev || prev === '-') return null;
-  const match = prev.match(/([\d.]+)\s*kg\s*x\s*(\d+)/i);
+  if (!prev || prev === '-' || prev.length > 50) return null;
+  const safeRegex = /(\d+(?:\.\d+)?)\s{0,5}kg\s{0,5}x\s{0,5}(\d+)/i;
+  const match = prev.match(safeRegex);
   if (!match) return null;
   return { weightKg: parseFloat(match[1]), reps: parseInt(match[2], 10) };
 }

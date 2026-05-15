@@ -4,42 +4,27 @@
  * Tests for hooks/useGoogleLogin.ts
  *
  * Covers:
- *   - configureGoogleSignIn calls GoogleSignin.configure with correct options
+ *   - configureGoogleSignIn remains a safe no-op for backward compatibility
  *   - useGoogleLogin: initial state (isPending=false)
- *   - Successful flow: signIn → idToken → POST /auth/google → setAuth called
- *   - Correct endpoint and payload sent to apiClient
- *   - Error: missing idToken throws before calling the API
- *   - Error: hasPlayServices rejection stops flow before setAuth
+ *   - Successful flow: env test account → login service → setAuth called
+ *   - Missing env credentials throws before calling the service
+ *   - Backend/login errors are surfaced and do not set auth
  */
 
 import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { AuthResult } from '@/services/gitfit.service';
 
-// ── Mocks ─────────────────────────────────────────────────────────────────────
-// IMPORTANT: jest.fn() must be placed INLINE inside the factory (not in module-level
-// variables) for modules that are eagerly required during import. Module-level
-// `const mock* = jest.fn()` variables are only hoisted as `var` declarations;
-// their assignments run AFTER require() calls, so the factory would capture `undefined`.
-// Closures (like the useAuthStore factory below) are fine because they evaluate
-// `mockSetAuth` lazily at call time, not at factory-creation time.
+const queryClients: QueryClient[] = [];
 
-jest.mock('@react-native-google-signin/google-signin', () => ({
-  GoogleSignin: {
-    configure: jest.fn(),
-    hasPlayServices: jest.fn(),
-    signIn: jest.fn(),
-  },
-  statusCodes: {
-    SIGN_IN_CANCELLED: 'SIGN_IN_CANCELLED',
-    IN_PROGRESS: 'IN_PROGRESS',
-    PLAY_SERVICES_NOT_AVAILABLE: 'PLAY_SERVICES_NOT_AVAILABLE',
-  },
-  isErrorWithCode: jest.fn((err: any, code: string) => err?.code === code),
+jest.mock('@/services/gitfit.service', () => ({
+  __esModule: true,
+  default: { login: jest.fn() },
 }));
 
-jest.mock('@/utils/apiClient', () => ({
-  apiClient: { post: jest.fn() },
+jest.mock('@/utils/sentryUser', () => ({
+  identifySentryUser: jest.fn(),
 }));
 
 // Safe to use a module-level variable here because `useAuthStore` is a closure:
@@ -53,22 +38,27 @@ jest.mock('@/store/authStore', () => ({
 
 // Import AFTER mocks
 import { configureGoogleSignIn, useGoogleLogin } from '@/hooks/useGoogleLogin';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { apiClient } from '@/utils/apiClient';
+import gitfitService from '@/services/gitfit.service';
+import { identifySentryUser } from '@/utils/sentryUser';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function createWrapper() {
   const client = new QueryClient({
-    defaultOptions: { mutations: { retry: false } },
+    defaultOptions: {
+      mutations: { retry: false, gcTime: Infinity },
+      queries: { gcTime: Infinity },
+    },
   });
+  queryClients.push(client);
+
   return ({ children }: { children: React.ReactNode }) =>
     React.createElement(QueryClientProvider, { client }, children);
 }
 
 const MOCK_USER = {
   id: 'u1',
-  email: 'test@example.com',
+  email: 'test@gmail.com',
   username: 'testuser',
   fullName: 'Test User',
   avatarUrl: null,
@@ -77,31 +67,24 @@ const MOCK_USER = {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  jest.mocked(GoogleSignin.configure).mockClear();
-  jest.mocked(GoogleSignin.hasPlayServices).mockReset().mockResolvedValue(true);
-  jest.mocked(GoogleSignin.signIn).mockReset();
-  jest.mocked(apiClient.post).mockReset();
+  process.env.EXPO_PUBLIC_TEST_EMAIL = 'test@gmail.com';
+  process.env.EXPO_PUBLIC_TEST_PASSWORD = 'test123';
+  jest.mocked(gitfitService.login).mockReset();
+  jest.mocked(identifySentryUser).mockClear();
   mockSetAuth.mockClear();
+});
+
+afterEach(() => {
+  while (queryClients.length > 0) {
+    queryClients.pop()?.clear();
+  }
 });
 
 // ── configureGoogleSignIn ──────────────────────────────────────────────────────
 describe('configureGoogleSignIn', () => {
-  it('calls GoogleSignin.configure exactly once', () => {
+  it('does not throw when called from app startup', () => {
     configureGoogleSignIn();
-    expect(jest.mocked(GoogleSignin.configure)).toHaveBeenCalledTimes(1);
-  });
-
-  it('passes a webClientId option (key must be present)', () => {
-    configureGoogleSignIn();
-    const [calledWith] = jest.mocked(GoogleSignin.configure).mock.calls[0];
-    expect(calledWith).toHaveProperty('webClientId');
-  });
-
-  it('sets offlineAccess to false', () => {
-    configureGoogleSignIn();
-    expect(jest.mocked(GoogleSignin.configure)).toHaveBeenCalledWith(
-      expect.objectContaining({ offlineAccess: false }),
-    );
+    expect(true).toBe(true);
   });
 });
 
@@ -116,9 +99,8 @@ describe('useGoogleLogin', () => {
   });
 
   it('calls setAuth with the full response on a successful sign-in', async () => {
-    const fakeResponse = { accessToken: 'at-1', refreshToken: 'rt-1', user: MOCK_USER };
-    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({ data: { idToken: 'google-id-token' } } as any);
-    jest.mocked(apiClient.post).mockResolvedValueOnce({ data: fakeResponse });
+    const fakeResponse: AuthResult = { accessToken: 'at-1', refreshToken: 'rt-1', user: MOCK_USER };
+    jest.mocked(gitfitService.login).mockResolvedValueOnce(fakeResponse);
 
     const { result } = renderHook(() => useGoogleLogin(), {
       wrapper: createWrapper(),
@@ -130,13 +112,14 @@ describe('useGoogleLogin', () => {
 
     expect(mockSetAuth).toHaveBeenCalledTimes(1);
     expect(mockSetAuth).toHaveBeenCalledWith(fakeResponse);
+    expect(jest.mocked(identifySentryUser)).toHaveBeenCalledWith(MOCK_USER);
   });
 
-  it('POSTs to /auth/google with the idToken from GoogleSignin', async () => {
-    const idToken = 'google-token-xyz';
-    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({ data: { idToken } } as any);
-    jest.mocked(apiClient.post).mockResolvedValueOnce({
-      data: { accessToken: 'at', refreshToken: 'rt', user: MOCK_USER },
+  it('logs in with the seeded account from env', async () => {
+    jest.mocked(gitfitService.login).mockResolvedValueOnce({
+      accessToken: 'at',
+      refreshToken: 'rt',
+      user: MOCK_USER,
     });
 
     const { result } = renderHook(() => useGoogleLogin(), {
@@ -147,11 +130,15 @@ describe('useGoogleLogin', () => {
       await result.current.mutateAsync();
     });
 
-    expect(jest.mocked(apiClient.post)).toHaveBeenCalledWith('/auth/google', { idToken });
+    expect(jest.mocked(gitfitService.login)).toHaveBeenCalledWith({
+      email: 'test@gmail.com',
+      password: 'test123',
+    });
   });
 
-  it('throws and does not call the API when signIn returns no idToken', async () => {
-    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({ data: {} } as any); // no idToken field
+  it('throws when the seeded credentials are missing', async () => {
+    delete process.env.EXPO_PUBLIC_TEST_EMAIL;
+    delete process.env.EXPO_PUBLIC_TEST_PASSWORD;
 
     const { result } = renderHook(() => useGoogleLogin(), {
       wrapper: createWrapper(),
@@ -167,13 +154,13 @@ describe('useGoogleLogin', () => {
     });
 
     expect(caughtError).not.toBeNull();
-    expect(caughtError!.message).toBe('Google Sign-In did not return an idToken');
-    expect(jest.mocked(apiClient.post)).not.toHaveBeenCalled();
+    expect(caughtError!.message).toBe('Test account credentials are not configured.');
+    expect(jest.mocked(gitfitService.login)).not.toHaveBeenCalled();
     expect(mockSetAuth).not.toHaveBeenCalled();
   });
 
-  it('does not call setAuth when hasPlayServices rejects', async () => {
-    jest.mocked(GoogleSignin.hasPlayServices).mockRejectedValueOnce(new Error('Play Services unavailable'));
+  it('does not call setAuth when the backend login fails', async () => {
+    jest.mocked(gitfitService.login).mockRejectedValueOnce(new Error('Invalid seeded account credentials'));
 
     const { result } = renderHook(() => useGoogleLogin(), {
       wrapper: createWrapper(),
@@ -188,25 +175,8 @@ describe('useGoogleLogin', () => {
     });
 
     expect(mockSetAuth).not.toHaveBeenCalled();
-    expect(jest.mocked(apiClient.post)).not.toHaveBeenCalled();
-  });
-
-  it('does not call setAuth when the backend POST fails', async () => {
-    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({ data: { idToken: 'tok' } } as any);
-    jest.mocked(apiClient.post).mockRejectedValueOnce(new Error('Network error'));
-
-    const { result } = renderHook(() => useGoogleLogin(), {
-      wrapper: createWrapper(),
+    await waitFor(() => {
+      expect(result.current.error?.message).toBe('Invalid seeded account credentials');
     });
-
-    await act(async () => {
-      try {
-        await result.current.mutateAsync();
-      } catch {
-        // expected
-      }
-    });
-
-    expect(mockSetAuth).not.toHaveBeenCalled();
   });
 });

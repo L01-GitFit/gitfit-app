@@ -119,6 +119,20 @@ describe('Workout components', () => {
     expect(onToggle).toHaveBeenCalledTimes(1);
   });
 
+  it('parses decimal previous values for set rows', () => {
+    const { getByText } = render(
+      <SetRow
+        setNumber={2}
+        previous="50.5 kg x 10"
+        kg=""
+        reps=""
+        rpe="RPE"
+      />,
+    );
+
+    expect(getByText('50.5 kg x 10')).toBeTruthy();
+  });
+
   it('renders routine set rows and delete handler', () => {
     const onKgChange = jest.fn();
     const onRepsChange = jest.fn();

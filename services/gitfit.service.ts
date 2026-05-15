@@ -252,10 +252,19 @@ async function getMyProfile(): Promise<UserProfile> {
   return unwrapData(data);
 }
 
+async function getMyProfileWithAccessToken(accessToken: string): Promise<UserProfile> {
+  const { data } = await apiClient.get<ApiEnvelope<UserProfile>>('/users/me', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  return unwrapData(data);
+}
+
 async function login(payload: LoginPayload): Promise<AuthResult> {
   const { data } = await apiClient.post<ApiEnvelope<{ accessToken: string; refreshToken: string }>>('/auth/login', payload);
   const tokens = unwrapData(data);
-  const profile = await getMyProfile();
+  const profile = await getMyProfileWithAccessToken(tokens.accessToken);
   return {
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken,

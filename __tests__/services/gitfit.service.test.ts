@@ -2,7 +2,6 @@ import gitfitService from '@/services/gitfit.service';
 import { apiClient } from '@/utils/apiClient';
 import type {
   UserProfile,
-  AuthResult,
   LoginPayload,
   RegisterPayload,
   RoutineDetail,
@@ -78,7 +77,11 @@ describe('gitfitService', () => {
       const result = await gitfitService.login(loginPayload);
 
       expect(mockApiClient.post).toHaveBeenCalledWith('/auth/login', loginPayload);
-      expect(mockApiClient.get).toHaveBeenCalledWith('/users/me');
+      expect(mockApiClient.get).toHaveBeenCalledWith('/users/me', {
+        headers: {
+          Authorization: 'Bearer access-token-123',
+        },
+      });
 
       expect(result).toEqual({
         accessToken: 'access-token-123',
@@ -102,6 +105,38 @@ describe('gitfitService', () => {
       mockApiClient.post.mockRejectedValueOnce(new Error('Invalid credentials'));
 
       await expect(gitfitService.login(loginPayload)).rejects.toThrow('Invalid credentials');
+    });
+
+    it('should use the fresh login token for the profile request', async () => {
+      const loginPayload: LoginPayload = {
+        email: 'test@example.com',
+        password: 'password123',
+      };
+
+      mockApiClient.post.mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: {
+            accessToken: 'fresh-access-token',
+            refreshToken: 'refresh-token-456',
+          },
+        },
+      });
+
+      mockApiClient.get.mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: mockProfile,
+        },
+      });
+
+      await gitfitService.login(loginPayload);
+
+      expect(mockApiClient.get).toHaveBeenCalledWith('/users/me', {
+        headers: {
+          Authorization: 'Bearer fresh-access-token',
+        },
+      });
     });
   });
 

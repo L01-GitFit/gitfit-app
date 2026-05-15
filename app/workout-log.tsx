@@ -47,6 +47,23 @@ function formatPreviousValue(weightKg: number | null, reps: number | null): stri
   return `${weightText}kg x ${reps}`;
 }
 
+function parsePreviousSetValue(previous: string): { weightKg: number; reps: number } | null {
+  if (!previous || previous === '-' || previous.length > 50) {
+    return null;
+  }
+
+  const safeRegex = /(\d+(?:\.\d+)?)\s{0,5}kg\s{0,5}x\s{0,5}(\d+)/i;
+  const match = previous.match(safeRegex);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    weightKg: parseFloat(match[1]),
+    reps: parseInt(match[2], 10),
+  };
+}
+
 export default function WorkoutLogScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -295,11 +312,11 @@ export default function WorkoutLogScreen() {
     // If checking a set with no values entered, auto-fill from previous
     const isChecking = !targetSet.isCompleted;
     if (isChecking && targetSet.weightKg === 0 && targetSet.reps === 0 && targetSet.previous && targetSet.previous !== '-') {
-      const match = targetSet.previous.match(/([\d.]+)\s*kg\s*x\s*(\d+)/i);
-      if (match) {
+      const parsed = parsePreviousSetValue(targetSet.previous);
+      if (parsed) {
         updateSet(exercise.id, setNumber, {
-          weightKg: parseFloat(match[1]),
-          reps: parseInt(match[2], 10),
+          weightKg: parsed.weightKg,
+          reps: parsed.reps,
         });
       }
     }
