@@ -59,8 +59,8 @@
       "package": "com.diduide.gitfitexpoapp"
     },
     "androidStatusBar": {
-      "barStyle": "light-content",
-      "backgroundColor": "#000000",
+      "barStyle": "dark-content",
+      "backgroundColor": "#ffffff",
       "translucent": true
     },
     "extra": {
