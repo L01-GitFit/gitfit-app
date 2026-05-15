@@ -1,48 +1,34 @@
 import { useMutation } from '@tanstack/react-query';
-import {
-  GoogleSignin,
-  statusCodes,
-  isErrorWithCode,
-} from '@react-native-google-signin/google-signin';
 import { AxiosError } from 'axios';
-import { apiClient } from '../utils/apiClient';
-import { useAuthStore, AuthUser } from '../store/authStore';
+import gitfitService, { type AuthResult } from '@/services/gitfit.service';
+import { useAuthStore } from '../store/authStore';
 import { identifySentryUser } from '@/utils/sentryUser';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+function toFriendlyError(error: unknown): Error {
+  if (error instanceof AxiosError) {
+    const message = error.response?.data?.message;
+    if (typeof message === 'string') {
+      return new Error(message);
+    }
+    if (Array.isArray(message) && message.length > 0) {
+      return new Error(String(message[0]));
+    }
+  }
 
-interface GoogleAuthResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: AuthUser;
+  if (error instanceof Error) {
+    return error;
+  }
+
+  return new Error('Test account sign-in failed. Please try again.');
 }
-
-// ─── One-time SDK configuration ───────────────────────────────────────────────
-// Call this once at app startup, e.g. in app/_layout.tsx, before any sign-in.
-//
-//   import { configureGoogleSignIn } from '@/hooks/useGoogleLogin';
-//   configureGoogleSignIn();
-//
-// IMPORTANT: Replace the value below with your actual Web Client ID from the
-// Google Cloud Console (APIs & Services → Credentials → OAuth 2.0 Client IDs).
-// The *Web* Client ID is required for backend token verification even in mobile
-// flows; it is NOT the Android or iOS client ID.
 
 export function configureGoogleSignIn(): void {
-  GoogleSignin.configure({
-    webClientId: process.env.PUBLIC_EXPO_GOOGLE_CLIENT_ID,
-    offlineAccess: false,
-  });
+  // Kept for backward compatibility with app/_layout.tsx.
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
-
 /**
- * Provides a `mutate` / `mutateAsync` function that runs the full
- * Google Sign-In flow end-to-end:
- *   1. Opens the native Google Sign-In sheet
- *   2. Sends the resulting idToken to the NestJS backend
- *   3. Persists the returned JWT tokens + user in the Zustand auth store
+ * Keeps the existing Google-login call sites working, but signs in with the
+ * seeded test account configured in env so the app can run on Expo Go.
  *
  * Usage:
  *   const { mutate: signInWithGoogle, isPending, error } = useGoogleLogin();
@@ -50,65 +36,25 @@ export function configureGoogleSignIn(): void {
 export function useGoogleLogin() {
   const setAuth = useAuthStore((s) => s.setAuth);
 
-  return useMutation<GoogleAuthResponse, Error, void>({
+  return useMutation<AuthResult, Error, void>({
     mutationFn: async () => {
-      // ── Step 1: ensure Google Play Services are available (Android) ─────────
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const email = process.env.EXPO_PUBLIC_TEST_EMAIL?.trim();
+      const password = process.env.EXPO_PUBLIC_TEST_PASSWORD?.trim();
 
-      // ── Step 2: open the native Google Sign-In prompt ────────────────────────
-      const signInResult = await GoogleSignin.signIn();
-
-      // The idToken is inside the nested data object in SDK v13+
-      const idToken = signInResult.data?.idToken;
-
-      if (!idToken) {
-        throw new Error('Google Sign-In did not return an idToken');
+      if (!email || !password) {
+        throw new Error('Test account credentials are not configured.');
       }
 
-      // ── Step 3: exchange idToken for app JWT tokens via the NestJS backend ───
-      const { data } = await apiClient.post<GoogleAuthResponse>(
-        '/auth/google',
-        { idToken },
-      );
-      return data;
+      try {
+        return await gitfitService.login({ email, password });
+      } catch (error) {
+        throw toFriendlyError(error);
+      }
     },
 
     onSuccess: (data) => {
-      // Persist tokens and user profile into the secure Zustand store
       identifySentryUser(data.user);
-      setAuth({
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
-        user: data.user,
-      });
-    },
-
-    onError: (error) => {
-      if (isErrorWithCode(error)) {
-        switch ((error as any).code) {
-          case statusCodes.SIGN_IN_CANCELLED:
-            console.log('[GoogleLogin] User cancelled the sign-in flow');
-            break;
-          case statusCodes.IN_PROGRESS:
-            console.warn('[GoogleLogin] Sign-in already in progress');
-            break;
-          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
-            console.error('[GoogleLogin] Google Play Services not available');
-            break;
-          default:
-            console.error('[GoogleLogin] Unexpected SDK error:', (error as any).message);
-        }
-        return;
-      }
-      if (error instanceof AxiosError) {
-        console.error(
-          '[GoogleLogin] Backend error:',
-          error,
-        );
-        return;
-      }
-
-      console.error('[GoogleLogin] Unknown error:', error);
+      setAuth(data);
     },
   });
 }
