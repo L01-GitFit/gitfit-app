@@ -2,6 +2,18 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 
 const mockPush = jest.fn();
+const queryState = {
+  profile: { username: 'tay' },
+  sessions: [] as Array<{
+    id: string;
+    name: string;
+    durationSeconds: number;
+    totalVolumeKg: number;
+    startedAt: string;
+  }>,
+  detailsById: {} as Record<string, any>,
+  isLoadingSessions: false,
+};
 
 jest.mock('@/services/gitfit.service', () => ({
   __esModule: true,
@@ -23,7 +35,6 @@ jest.mock('@react-native-vector-icons/material-icons', () => {
   };
 });
 
-const profileData = { username: 'tay' };
 const sessionSummary = {
   id: 'session-1',
   name: 'Upper Body Day',
@@ -70,15 +81,15 @@ jest.mock('@tanstack/react-query', () => ({
     const key = options.queryKey;
 
     if (key[0] === 'profile') {
-      return { data: profileData, isLoading: false };
+      return { data: queryState.profile, isLoading: false };
     }
 
     if (key[0] === 'sessions') {
-      return { data: { data: [sessionSummary] }, isLoading: false };
+      return { data: { data: queryState.sessions }, isLoading: queryState.isLoadingSessions };
     }
 
     if (key[0] === 'home-session-details') {
-      return { data: { 'session-1': sessionDetail }, isLoading: false };
+      return { data: queryState.detailsById, isLoading: false };
     }
 
     return { data: undefined, isLoading: false };
@@ -89,6 +100,10 @@ import Home from '@/app/(tabs)/home';
 
 beforeEach(() => {
   mockPush.mockClear();
+  queryState.profile = { username: 'tay' };
+  queryState.sessions = [sessionSummary];
+  queryState.detailsById = { 'session-1': sessionDetail };
+  queryState.isLoadingSessions = false;
 });
 
 describe('Home screen', () => {
@@ -110,5 +125,22 @@ describe('Home screen', () => {
       pathname: '/workout-detail',
       params: { sessionId: 'session-1' },
     });
+  });
+
+  it('shows loading state while workout history query is pending', () => {
+    queryState.sessions = [];
+    queryState.isLoadingSessions = true;
+
+    const { getByText } = render(<Home />);
+
+    expect(getByText('Loading workout history...')).toBeTruthy();
+  });
+
+  it('shows empty-state message when there is no workout history', () => {
+    queryState.sessions = [];
+
+    const { getByText } = render(<Home />);
+
+    expect(getByText('No workout history yet.')).toBeTruthy();
   });
 });

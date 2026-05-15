@@ -105,7 +105,7 @@ export default function WorkoutLogScreen() {
     [completedSetCount, totalSetCount],
   );
   const exerciseKey = useMemo(
-    () => exercises.map((ex) => ex.externalExercise.exerciseId).sort().join('|'),
+    () => exercises.map((ex) => ex.externalExercise.exerciseId).sort((a, b) => a.localeCompare(b)).join('|'),
     [exercises],
   );
 

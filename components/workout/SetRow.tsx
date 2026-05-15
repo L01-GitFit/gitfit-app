@@ -206,7 +206,7 @@ export function SetRow({
           <MaterialIcons
             name="check"
             size={15}
-            color={checked ? palette.checkIconColor : palette.checkIconColor}
+            color={palette.checkIconColor}
           />
         </Pressable>
       </Animated.View>

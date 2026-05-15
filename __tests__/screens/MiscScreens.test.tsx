@@ -6,7 +6,9 @@
  *   - app/+not-found.tsx     (0% coverage)
  */
 
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
+
+const mockCaptureException = jest.fn();
 
 // expo-router mock: Stack.Screen renders nothing, Link renders children
 jest.mock('expo-router', () => {
@@ -22,6 +24,11 @@ jest.mock('expo-router', () => {
 // expo-status-bar mock
 jest.mock('expo-status-bar', () => ({
   StatusBar: () => null,
+}));
+
+jest.mock('@sentry/react-native', () => ({
+  __esModule: true,
+  captureException: (...args: any[]) => mockCaptureException(...args),
 }));
 
 import Modal from '@/app/modal';
@@ -55,6 +62,10 @@ describe('Modal screen (app/modal.tsx)', () => {
 // app/+not-found.tsx
 // =============================================================================
 describe('NotFound screen (app/+not-found.tsx)', () => {
+  beforeEach(() => {
+    mockCaptureException.mockClear();
+  });
+
   it('does not crash on initial render', () => {
     expect(() => render(<NotFound />)).not.toThrow();
   });
@@ -67,6 +78,15 @@ describe('NotFound screen (app/+not-found.tsx)', () => {
   it('renders the "Go to home screen!" link', () => {
     const { getByText } = render(<NotFound />);
     expect(getByText('Go to home screen!')).toBeTruthy();
+  });
+
+  it('captures an exception when the Try button is pressed', () => {
+    const { getByText } = render(<NotFound />);
+
+    fireEvent.press(getByText('Try!'));
+
+    expect(mockCaptureException).toHaveBeenCalledTimes(1);
+    expect(mockCaptureException.mock.calls[0][0]).toBeInstanceOf(Error);
   });
 
   it('re-renders without crashing', () => {

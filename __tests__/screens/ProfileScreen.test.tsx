@@ -141,6 +141,33 @@ describe('Profile screen', () => {
     alertSpy.mockRestore();
   });
 
+  it('shows validation error and does not submit when weight is invalid', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    const { getByTestId } = render(<ProfileScreen />);
+
+    fireEvent.changeText(getByTestId('profile-weight-input'), 'abc');
+    fireEvent.press(getByTestId('profile-save-button'));
+
+    expect(mockUpdateProfileMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(alertSpy).toHaveBeenCalledWith('Validation error', 'Weight must be a valid number.');
+
+    alertSpy.mockRestore();
+  });
+
+  it('shows update failure when profile save request fails', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    mockUpdateProfileMutation.mutateAsync.mockRejectedValueOnce(new Error('Network unavailable'));
+
+    const { getByTestId } = render(<ProfileScreen />);
+    fireEvent.press(getByTestId('profile-save-button'));
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Update failed', 'Network unavailable');
+    });
+
+    alertSpy.mockRestore();
+  });
+
   it('confirms logout and clears auth', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
       const destructiveButton = (buttons as any[]).find((button) => button.style === 'destructive');

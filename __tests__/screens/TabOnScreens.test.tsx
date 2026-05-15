@@ -6,14 +6,18 @@ const mockStartSession = jest.fn();
 const mockStartSessionFromRoutine = jest.fn();
 const mockStartDraft = jest.fn();
 const mockInvalidateQueries = jest.fn();
+const mockTrackWorkoutSessionStarted = jest.fn();
 const mockCreateSessionMutation = { mutateAsync: jest.fn().mockResolvedValue({ id: 'session-1', name: 'Empty Workout' }), isPending: false };
 const mockDeleteRoutineMutation = { mutateAsync: jest.fn().mockResolvedValue(undefined), isPending: false };
 let mockMutationIndex = 0;
+let mockSessionId: string | null = null;
+let mockRoutines: Array<{ id: string; name: string; programId?: string | null }> = [];
 
 jest.mock('@/services/gitfit.service', () => ({
   __esModule: true,
   default: {
     listRoutines: jest.fn(),
+    getRoutineById: jest.fn(),
   },
 }));
 
@@ -38,7 +42,7 @@ jest.mock('@react-native-vector-icons/material-icons', () => {
 jest.mock('@/store/workoutSession.store', () => ({
   useWorkoutSessionStore: (selector: any) =>
     selector({
-      sessionId: null,
+      sessionId: mockSessionId,
       startSession: mockStartSession,
       startSessionFromRoutine: mockStartSessionFromRoutine,
       exercises: [],
@@ -50,7 +54,7 @@ jest.mock('@/store/routine.store', () => ({
 }));
 
 jest.mock('@tanstack/react-query', () => ({
-  useQuery: jest.fn(() => ({ data: [], isFetching: false })),
+  useQuery: jest.fn(() => ({ data: mockRoutines, isFetching: false })),
   useMutation: jest.fn(() => {
     mockMutationIndex += 1;
     return mockMutationIndex === 1 ? mockCreateSessionMutation : mockDeleteRoutineMutation;
@@ -59,10 +63,11 @@ jest.mock('@tanstack/react-query', () => ({
 }));
 
 jest.mock('@/utils/sentryAnalytics', () => ({
-  trackWorkoutSessionStarted: jest.fn(),
+  trackWorkoutSessionStarted: (...args: any[]) => mockTrackWorkoutSessionStarted(...args),
 }));
 
 import WorkoutScreen from '@/app/(tabs)/workout';
+import gitfitService from '@/services/gitfit.service';
 
 beforeEach(() => {
   mockPush.mockClear();
@@ -72,6 +77,31 @@ beforeEach(() => {
   mockInvalidateQueries.mockClear();
   mockCreateSessionMutation.mutateAsync.mockClear();
   mockDeleteRoutineMutation.mutateAsync.mockClear();
+  mockTrackWorkoutSessionStarted.mockClear();
+  mockSessionId = null;
+  mockRoutines = [];
+
+  jest.mocked(gitfitService.getRoutineById).mockReset();
+  jest.mocked(gitfitService.getRoutineById).mockResolvedValue({
+    id: 'routine-1',
+    routineExercises: [
+      {
+        id: 're-1',
+        exerciseId: 'ex-1',
+        sets: 2,
+        repsTarget: '8 reps',
+        weightTarget: 60,
+        exercise: {
+          id: 'ex-1',
+          name: 'Bench Press',
+          gifUrl: null,
+          targetMuscles: ['chest'],
+          bodyParts: ['upper arms'],
+        },
+      },
+    ],
+  } as any);
+
   mockMutationIndex = 0;
 });
 
@@ -104,5 +134,47 @@ describe('Workout tab screen', () => {
 
     expect(mockStartDraft).toHaveBeenCalledWith('New Routine');
     expect(mockPush).toHaveBeenCalledWith('/create-routine');
+  });
+
+  it('resumes active workout session without creating a new session', async () => {
+    mockSessionId = 'session-active-1';
+
+    const { getByText } = render(<WorkoutScreen />);
+
+    fireEvent.press(getByText('Resume Workout'));
+
+    await waitFor(() => {
+      expect(mockCreateSessionMutation.mutateAsync).not.toHaveBeenCalled();
+      expect(mockPush).toHaveBeenCalledWith('/workout-log');
+      expect(mockTrackWorkoutSessionStarted).toHaveBeenCalledWith({
+        sessionId: 'session-active-1',
+        source: 'resume',
+      });
+    });
+  });
+
+  it('starts workout from a routine card', async () => {
+    mockRoutines = [{ id: 'routine-1', name: 'Push Day', programId: null }];
+    mockCreateSessionMutation.mutateAsync.mockResolvedValueOnce({
+      id: 'session-routine-1',
+      name: 'Push Day Session',
+    });
+
+    const { getByText } = render(<WorkoutScreen />);
+
+    fireEvent.press(getByText('Start Routine'));
+
+    await waitFor(() => {
+      expect(jest.mocked(gitfitService.getRoutineById)).toHaveBeenCalledWith('routine-1');
+      expect(mockCreateSessionMutation.mutateAsync).toHaveBeenCalledWith({ routineId: 'routine-1' });
+      expect(mockStartSessionFromRoutine).toHaveBeenCalledTimes(1);
+      expect(mockPush).toHaveBeenCalledWith('/workout-log');
+      expect(mockTrackWorkoutSessionStarted).toHaveBeenCalledWith({
+        sessionId: 'session-routine-1',
+        source: 'routine',
+        routineId: 'routine-1',
+        routineName: 'Push Day',
+      });
+    });
   });
 });
