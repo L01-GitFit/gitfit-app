@@ -1,0 +1,276 @@
+{
+  "color": {
+    "primary": {
+      "description": "",
+      "type": "color",
+      "value": "#ee9033ff",
+      "blendMode": "normal",
+      "extensions": {
+        "org.lukasoppermann.figmaDesignTokens": {
+          "styleId": "S:d7997a846853cf179b984b512eb8e706eb2ef422,",
+          "exportKey": "color"
+        }
+      }
+    },
+    "secondary": {
+      "description": "",
+      "type": "color",
+      "value": "#e08e02ff",
+      "blendMode": "normal",
+      "extensions": {
+        "org.lukasoppermann.figmaDesignTokens": {
+          "styleId": "S:2a393337532f23c96926be07309431010a58d805,",
+          "exportKey": "color"
+        }
+      }
+    },
+    "tertiary": {
+      "description": "",
+      "type": "color",
+      "value": "#d2ad05ff",
+      "blendMode": "normal",
+      "extensions": {
+        "org.lukasoppermann.figmaDesignTokens": {
+          "styleId": "S:291f43e5bb77865d3af80017607f624bd97f1912,",
+          "exportKey": "color"
+        }
+      }
+    },
+    "neutral": {
+      "description": "",
+      "type": "color",
+      "value": "#111111ff",
+      "blendMode": "normal",
+      "extensions": {
+        "org.lukasoppermann.figmaDesignTokens": {
+          "styleId": "S:289abfe338058f55ea2ba46ce2c5af57c18d0e64,",
+          "exportKey": "color"
+        }
+      }
+    },
+    "text": {
+      "description": "",
+      "type": "color",
+      "value": "#f4f4f4ff",
+      "blendMode": "normal",
+      "extensions": {
+        "org.lukasoppermann.figmaDesignTokens": {
+          "styleId": "S:15d3ff701e13754375675bb7175979710928da10,",
+          "exportKey": "color"
+        }
+      }
+    },
+    "background": {
+      "description": "",
+      "type": "color",
+      "value": "#1c1c1eff",
+      "blendMode": "normal",
+      "extensions": {
+        "org.lukasoppermann.figmaDesignTokens": {
+          "styleId": "S:64356edf0ab7117f2f01e5bd31f78cdef687e8e1,",
+          "exportKey": "color"
+        }
+      }
+    },
+    "discard - remove": {
+      "description": "",
+      "type": "color",
+      "value": "#ff6868ff",
+      "blendMode": "normal",
+      "extensions": {
+        "org.lukasoppermann.figmaDesignTokens": {
+          "styleId": "S:76bbab5233f162e5be98effdbca92ee834014bb3,",
+          "exportKey": "color"
+        }
+      }
+    },
+    "active": {
+      "description": "",
+      "type": "color",
+      "value": "#007ce2ff",
+      "blendMode": "normal",
+      "extensions": {
+        "org.lukasoppermann.figmaDesignTokens": {
+          "styleId": "S:91bf9ad7dd15e4553797cc032cb28f0cffc3b74a,",
+          "exportKey": "color"
+        }
+      }
+    },
+    "progress bar": {
+      "description": "",
+      "type": "color",
+      "value": "#d9d9d9ff",
+      "blendMode": "normal",
+      "extensions": {
+        "org.lukasoppermann.figmaDesignTokens": {
+          "styleId": "S:e4a958ce530e477704e138650a578e6cb98bb1e0,",
+          "exportKey": "color"
+        }
+      }
+    },
+    "completed": {
+      "description": "",
+      "type": "color",
+      "value": "#2b620fff",
+      "blendMode": "normal",
+      "extensions": {
+        "org.lukasoppermann.figmaDesignTokens": {
+          "styleId": "S:d6776727160ccb95361dbe3a6af038798710336e,",
+          "exportKey": "color"
+        }
+      }
+    },
+    "completed dark": {
+      "description": "",
+      "type": "color",
+      "value": "#489811ff",
+      "blendMode": "normal",
+      "extensions": {
+        "org.lukasoppermann.figmaDesignTokens": {
+          "styleId": "S:afc29bd9aa79a0a2a2d5641c962ad37e1d487005,",
+          "exportKey": "color"
+        }
+      }
+    }
+  },
+  "font": {
+    "heading": {
+      "type": "custom-fontStyle",
+      "value": {
+        "fontSize": 28,
+        "textDecoration": "none",
+        "fontFamily": "Lexend",
+        "fontWeight": 700,
+        "fontStyle": "normal",
+        "fontStretch": "normal",
+        "letterSpacing": 0,
+        "lineHeight": 33.6,
+        "paragraphIndent": 0,
+        "paragraphSpacing": 0,
+        "textCase": "none"
+      },
+      "extensions": {
+        "org.lukasoppermann.figmaDesignTokens": {
+          "styleId": "S:65e81d3ed73617a5a08d1c6f893a33ac7c9ff902,",
+          "exportKey": "font"
+        }
+      }
+    },
+    "caption": {
+      "type": "custom-fontStyle",
+      "value": {
+        "fontSize": 12,
+        "textDecoration": "none",
+        "fontFamily": "Lexend",
+        "fontWeight": 400,
+        "fontStyle": "normal",
+        "fontStretch": "normal",
+        "letterSpacing": 0,
+        "lineHeight": 14.4,
+        "paragraphIndent": 0,
+        "paragraphSpacing": 0,
+        "textCase": "none"
+      },
+      "extensions": {
+        "org.lukasoppermann.figmaDesignTokens": {
+          "styleId": "S:37be156843ef8250d98cc5ec8802d0d5bf69d0ba,",
+          "exportKey": "font"
+        }
+      }
+    }
+  },
+  "typography": {
+    "heading": {
+      "fontSize": {
+        "type": "dimension",
+        "value": 28
+      },
+      "textDecoration": {
+        "type": "string",
+        "value": "none"
+      },
+      "fontFamily": {
+        "type": "string",
+        "value": "Lexend"
+      },
+      "fontWeight": {
+        "type": "number",
+        "value": 700
+      },
+      "fontStyle": {
+        "type": "string",
+        "value": "normal"
+      },
+      "fontStretch": {
+        "type": "string",
+        "value": "normal"
+      },
+      "letterSpacing": {
+        "type": "dimension",
+        "value": 0
+      },
+      "lineHeight": {
+        "type": "dimension",
+        "value": 33.6
+      },
+      "paragraphIndent": {
+        "type": "dimension",
+        "value": 0
+      },
+      "paragraphSpacing": {
+        "type": "dimension",
+        "value": 0
+      },
+      "textCase": {
+        "type": "string",
+        "value": "none"
+      }
+    },
+    "caption": {
+      "fontSize": {
+        "type": "dimension",
+        "value": 12
+      },
+      "textDecoration": {
+        "type": "string",
+        "value": "none"
+      },
+      "fontFamily": {
+        "type": "string",
+        "value": "Lexend"
+      },
+      "fontWeight": {
+        "type": "number",
+        "value": 400
+      },
+      "fontStyle": {
+        "type": "string",
+        "value": "normal"
+      },
+      "fontStretch": {
+        "type": "string",
+        "value": "normal"
+      },
+      "letterSpacing": {
+        "type": "dimension",
+        "value": 0
+      },
+      "lineHeight": {
+        "type": "dimension",
+        "value": 14.4
+      },
+      "paragraphIndent": {
+        "type": "dimension",
+        "value": 0
+      },
+      "paragraphSpacing": {
+        "type": "dimension",
+        "value": 0
+      },
+      "textCase": {
+        "type": "string",
+        "value": "none"
+      }
+    }
+  }
+}

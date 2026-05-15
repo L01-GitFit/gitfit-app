@@ -1,7 +1,11 @@
 import { Tabs } from 'expo-router';
+import BottomTabBar from '@/components/BottomTabBar';
 
-import BottomTabBar from '../../components/BottomTabBar';
-
+/**
+ * Main app tab layout.
+ * The custom BottomTabBar renders its own icons; tabBarIcon is not needed.
+ * Add <Tabs.Screen> entries here whenever a new tab route is added.
+ */
 export default function TabLayout() {
   return (
     <Tabs
@@ -10,18 +14,23 @@ export default function TabLayout() {
         headerStyle: { backgroundColor: '#000' },
         headerTintColor: '#fff',
       }}>
+      {/* Tab 1 — Home */}
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
           title: 'Home',
+          headerShown: false,
         }}
       />
+      {/* Tab 2 — Workout */}
       <Tabs.Screen
-        name="two"
+        name="workout"
         options={{
           title: 'Workout',
+          headerShown: false,
         }}
       />
+      {/* Tab 3 — Profile */}
       <Tabs.Screen
         name="profile"
         options={{

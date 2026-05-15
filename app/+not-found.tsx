@@ -1,4 +1,7 @@
 import { Link, Stack } from 'expo-router';
+import { Button } from "react-native"
+
+import * as Sentry from "@sentry/react-native"
 
 import { Text, View } from 'react-native';
 
@@ -8,7 +11,8 @@ export default function NotFoundScreen() {
       <Stack.Screen options={{ title: 'Oops!' }} />
       <View className={styles.container}>
         <Text className={styles.title}>{"This screen doesn't exist."}</Text>
-        <Link href="/" className={styles.link}>
+        <Button title='Try!' onPress={ () => { Sentry.captureException(new Error('First error')) }}/>
+        <Link href="/home" className={styles.link}>
           <Text className={styles.linkText}>Go to home screen!</Text>
         </Link>
       </View>
